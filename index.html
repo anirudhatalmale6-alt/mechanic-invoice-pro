@@ -1484,14 +1484,17 @@ function buildPDF(inv) {
 
   // ---- NOTES ----
   if (inv.notes) {
-    const noteLines = doc.splitTextToSize(inv.notes, pageW - 28);
-    const notesHeight = 8 + noteLines.length * 5;
+    doc.setFontSize(8);
+    doc.setFont(undefined, 'normal');
+    const noteLines = doc.splitTextToSize(inv.notes, pageW - 36);
+    const notesHeight = 10 + noteLines.length * 4;
     checkPage(notesHeight);
     doc.setFont(undefined, 'bold');
     doc.setFontSize(9);
     doc.setTextColor(...black);
     doc.text('Notes:', 14, y);
     doc.setFont(undefined, 'normal');
+    doc.setFontSize(8);
     doc.setTextColor(80, 80, 80);
     doc.text(noteLines, 14, y + 6);
     y += notesHeight;
@@ -1509,7 +1512,9 @@ function buildPDF(inv) {
 
   // ---- WARRANTY GUARANTEE ----
   const warrantyText = settings.warrantyText || 'Macs Autos warrants that all mechanical repairs performed and parts supplied as part of this service will be free from defects in materials and workmanship for a period of 6 months or 10,000 km (whichever occurs first) from the date of this invoice.';
-  const warrantyLines = doc.splitTextToSize(warrantyText, pageW - 28);
+  doc.setFontSize(8);
+  doc.setFont(undefined, 'normal');
+  const warrantyLines = doc.splitTextToSize(warrantyText, pageW - 36);
   const warrantyHeight = 16 + warrantyLines.length * 4;
   checkPage(warrantyHeight);
   y += 2;
