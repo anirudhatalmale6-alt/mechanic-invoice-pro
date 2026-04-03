@@ -3,21 +3,23 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="theme-color" content="#e94560">
+  <meta name="theme-color" content="#CC0000">
   <link rel="manifest" href="manifest.json">
-  <title>Mechanic Invoice Pro</title>
+  <title>Macs Autos - Invoice</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     :root {
-      --bg: #f5f5f5;
+      --bg: #f2f2f2;
       --card: #ffffff;
-      --primary: #1a1a2e;
-      --accent: #e94560;
-      --accent-hover: #d63350;
-      --text: #333333;
-      --text-light: #777777;
+      --primary: #1a1a1a;
+      --red: #CC0000;
+      --red-dark: #a30000;
+      --red-light: #fff0f0;
+      --silver: #c0c0c0;
+      --text: #222222;
+      --text-light: #666666;
       --border: #e0e0e0;
       --success: #27ae60;
       --radius: 10px;
@@ -29,40 +31,56 @@
       min-height: 100vh;
     }
 
-    /* Header */
+    /* Header - Clean white design */
     .header {
-      background: var(--primary);
-      color: white;
-      padding: 16px 20px;
+      background: #ffffff;
+      padding: 12px 20px;
       display: flex;
       align-items: center;
       justify-content: space-between;
       position: sticky;
       top: 0;
       z-index: 100;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      border-bottom: 3px solid var(--red);
     }
-    .header h1 {
-      font-size: 20px;
-      font-weight: 700;
+    .header-brand {
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 12px;
     }
-    .header h1 .wrench { font-size: 24px; }
+    .header-logo {
+      width: 44px;
+      height: 44px;
+      border-radius: 8px;
+      object-fit: contain;
+    }
+    .header-text h1 {
+      font-size: 20px;
+      font-weight: 800;
+      color: var(--primary);
+      line-height: 1.1;
+    }
+    .header-text small {
+      font-size: 11px;
+      color: var(--red);
+      font-weight: 600;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
     .header-actions { display: flex; gap: 8px; }
     .header-btn {
-      background: rgba(255,255,255,0.1);
-      border: 1px solid rgba(255,255,255,0.2);
-      color: white;
+      background: var(--red-light);
+      border: 1px solid #fdd;
+      color: var(--red);
       padding: 8px 14px;
       border-radius: 8px;
       cursor: pointer;
       font-size: 13px;
-      transition: background 0.2s;
+      font-weight: 600;
+      transition: all 0.2s;
     }
-    .header-btn:hover { background: rgba(255,255,255,0.2); }
-    .header-btn.active { background: var(--accent); border-color: var(--accent); }
+    .header-btn:hover { background: var(--red); color: white; }
 
     /* Navigation tabs */
     .tabs {
@@ -84,8 +102,8 @@
       white-space: nowrap;
       min-width: 100px;
     }
-    .tab:hover { color: var(--text); background: #f9f9f9; }
-    .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+    .tab:hover { color: var(--text); background: #fafafa; }
+    .tab.active { color: var(--red); border-bottom-color: var(--red); }
 
     /* Main content */
     .content { max-width: 800px; margin: 0 auto; padding: 16px; }
@@ -103,22 +121,27 @@
     }
     .card-title {
       font-size: 16px;
-      font-weight: 600;
+      font-weight: 700;
       margin-bottom: 16px;
       color: var(--primary);
       display: flex;
       align-items: center;
       gap: 8px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid #f0f0f0;
     }
+    .card-title .icon { color: var(--red); }
 
     /* Form elements */
     .form-group { margin-bottom: 14px; }
     .form-group label {
       display: block;
       font-size: 13px;
-      font-weight: 500;
+      font-weight: 600;
       margin-bottom: 5px;
       color: var(--text-light);
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
     }
     .form-group input, .form-group textarea, .form-group select {
       width: 100%;
@@ -131,8 +154,9 @@
     }
     .form-group input:focus, .form-group textarea:focus, .form-group select:focus {
       outline: none;
-      border-color: var(--accent);
+      border-color: var(--red);
       background: white;
+      box-shadow: 0 0 0 3px rgba(204, 0, 0, 0.08);
     }
     .form-row {
       display: grid;
@@ -156,16 +180,16 @@
       align-items: center;
       gap: 8px;
     }
-    .btn-primary { background: var(--accent); color: white; }
-    .btn-primary:hover { background: var(--accent-hover); transform: translateY(-1px); }
+    .btn-primary { background: var(--red); color: white; }
+    .btn-primary:hover { background: var(--red-dark); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(204,0,0,0.3); }
     .btn-success { background: var(--success); color: white; }
     .btn-success:hover { background: #219a52; }
     .btn-outline {
       background: transparent;
-      color: var(--accent);
-      border: 2px solid var(--accent);
+      color: var(--red);
+      border: 2px solid var(--red);
     }
-    .btn-outline:hover { background: var(--accent); color: white; }
+    .btn-outline:hover { background: var(--red); color: white; }
     .btn-sm { padding: 8px 14px; font-size: 13px; }
     .btn-danger { background: #e74c3c; color: white; }
     .btn-danger:hover { background: #c0392b; }
@@ -175,11 +199,11 @@
     .line-items { width: 100%; border-collapse: collapse; margin-bottom: 12px; }
     .line-items th {
       text-align: left;
-      font-size: 12px;
-      font-weight: 600;
+      font-size: 11px;
+      font-weight: 700;
       color: var(--text-light);
       padding: 8px 6px;
-      border-bottom: 2px solid var(--border);
+      border-bottom: 2px solid var(--red);
       text-transform: uppercase;
       letter-spacing: 0.5px;
     }
@@ -194,7 +218,7 @@
     }
     .line-items input:focus, .line-items select:focus {
       outline: none;
-      border-color: var(--accent);
+      border-color: var(--red);
       background: white;
     }
     .line-items .col-desc { width: 40%; }
@@ -205,13 +229,13 @@
     .remove-row {
       background: none;
       border: none;
-      color: #e74c3c;
+      color: #ccc;
       font-size: 20px;
       cursor: pointer;
       padding: 4px 8px;
       border-radius: 4px;
     }
-    .remove-row:hover { background: #fde8e8; }
+    .remove-row:hover { background: #fde8e8; color: #e74c3c; }
 
     /* Totals */
     .totals {
@@ -219,8 +243,8 @@
       flex-direction: column;
       align-items: flex-end;
       gap: 6px;
-      padding: 12px 0;
-      border-top: 2px solid var(--border);
+      padding: 14px 0;
+      border-top: 2px solid #f0f0f0;
     }
     .total-row {
       display: flex;
@@ -229,10 +253,10 @@
       font-size: 15px;
     }
     .total-row.grand {
-      font-size: 20px;
-      font-weight: 700;
-      color: var(--primary);
-      padding-top: 8px;
+      font-size: 22px;
+      font-weight: 800;
+      color: var(--red);
+      padding-top: 10px;
       border-top: 2px solid var(--primary);
     }
 
@@ -248,7 +272,7 @@
     .service-item:last-child { border-bottom: none; }
     .service-info { flex: 1; }
     .service-name { font-weight: 600; font-size: 15px; }
-    .service-price { color: var(--accent); font-weight: 600; }
+    .service-price { color: var(--red); font-weight: 700; margin-right: 12px; }
     .service-actions { display: flex; gap: 6px; }
 
     /* Invoice history */
@@ -261,13 +285,14 @@
       border-radius: var(--radius);
       margin-bottom: 10px;
       border: 1px solid var(--border);
+      border-left: 4px solid var(--red);
       cursor: pointer;
       transition: box-shadow 0.2s;
     }
     .invoice-card:hover { box-shadow: 0 3px 12px rgba(0,0,0,0.1); }
     .invoice-num { font-weight: 700; color: var(--primary); }
     .invoice-customer { color: var(--text-light); font-size: 14px; }
-    .invoice-amount { font-weight: 700; color: var(--accent); font-size: 18px; }
+    .invoice-amount { font-weight: 800; color: var(--red); font-size: 18px; }
 
     /* Toast */
     .toast {
@@ -312,7 +337,7 @@
       font-size: 14px;
       border-bottom: 1px solid #f0f0f0;
     }
-    .quick-add-option:hover { background: #f5f5f5; }
+    .quick-add-option:hover { background: var(--red-light); }
     .quick-add-option:last-child { border-bottom: none; }
 
     /* Actions bar */
@@ -333,18 +358,19 @@
 
     /* Settings branding preview */
     .brand-preview {
-      background: var(--primary);
+      background: linear-gradient(135deg, #1a1a1a, #333);
       color: white;
       border-radius: var(--radius);
-      padding: 20px;
+      padding: 24px;
       text-align: center;
       margin-bottom: 16px;
+      border: 2px solid var(--red);
     }
     .brand-preview .logo-placeholder {
       width: 80px;
       height: 80px;
-      border-radius: 50%;
-      background: rgba(255,255,255,0.15);
+      border-radius: 12px;
+      background: rgba(255,255,255,0.1);
       margin: 0 auto 12px;
       display: flex;
       align-items: center;
@@ -356,10 +382,10 @@
     .brand-preview .logo-placeholder img {
       width: 100%;
       height: 100%;
-      object-fit: cover;
-      border-radius: 50%;
+      object-fit: contain;
+      padding: 4px;
     }
-    .brand-preview .company-name { font-size: 22px; font-weight: 700; }
+    .brand-preview .company-name { font-size: 22px; font-weight: 800; }
     .brand-preview .company-tagline { font-size: 13px; opacity: 0.7; margin-top: 4px; }
 
     /* Tax toggle */
@@ -378,7 +404,7 @@
       cursor: pointer;
       transition: background 0.2s;
     }
-    .toggle.on { background: var(--accent); }
+    .toggle.on { background: var(--red); }
     .toggle::after {
       content: '';
       width: 22px;
@@ -395,9 +421,10 @@
 
     /* Responsive */
     @media (max-width: 600px) {
-      .header h1 { font-size: 17px; }
+      .header-text h1 { font-size: 17px; }
+      .header-logo { width: 36px; height: 36px; }
       .content { padding: 12px; }
-      .line-items th { font-size: 11px; }
+      .line-items th { font-size: 10px; }
       .total-row { width: 200px; }
       .form-row { grid-template-columns: 1fr; }
     }
@@ -434,7 +461,13 @@
 <body>
 
 <div class="header">
-  <h1><span class="wrench">&#128295;</span> Mechanic Invoice Pro</h1>
+  <div class="header-brand">
+    <img src="logo-small.png" alt="Macs Autos" class="header-logo" id="headerLogo">
+    <div class="header-text">
+      <h1>Macs Autos</h1>
+      <small>Invoice System</small>
+    </div>
+  </div>
   <div class="header-actions">
     <button class="header-btn" onclick="showSection('history')">&#128196; History</button>
   </div>
@@ -452,7 +485,7 @@
   <!-- ==================== NEW INVOICE ==================== -->
   <div class="section active" id="sec-invoice">
     <div class="card">
-      <div class="card-title">&#128100; Customer Details</div>
+      <div class="card-title"><span class="icon">&#128100;</span> Customer Details</div>
       <div class="form-group">
         <label>Customer Name</label>
         <input type="text" id="custName" placeholder="e.g. John Smith">
@@ -478,7 +511,7 @@
     </div>
 
     <div class="card">
-      <div class="card-title">&#128736; Services &amp; Parts</div>
+      <div class="card-title"><span class="icon">&#128736;</span> Services &amp; Parts</div>
       <div style="overflow-x:auto">
         <table class="line-items">
           <thead>
@@ -529,7 +562,7 @@
   <!-- ==================== SERVICES & PARTS ==================== -->
   <div class="section" id="sec-services">
     <div class="card">
-      <div class="card-title">&#128736; Saved Services &amp; Parts</div>
+      <div class="card-title"><span class="icon">&#128736;</span> Saved Services &amp; Parts</div>
       <p style="font-size:13px;color:var(--text-light);margin-bottom:14px;">
         Add your common services and parts here. They'll show up in Quick Add when creating invoices.
       </p>
@@ -541,7 +574,7 @@
     </div>
 
     <div class="card">
-      <div class="card-title">&#10133; Add New</div>
+      <div class="card-title"><span class="icon">&#10133;</span> Add New</div>
       <div class="form-row">
         <div class="form-group">
           <label>Type</label>
@@ -566,7 +599,7 @@
   <!-- ==================== HISTORY ==================== -->
   <div class="section" id="sec-history">
     <div class="card">
-      <div class="card-title">&#128196; Invoice History</div>
+      <div class="card-title"><span class="icon">&#128196;</span> Invoice History</div>
       <div id="historyList"></div>
       <div class="empty-state" id="historyEmpty">
         <div class="icon">&#128196;</div>
@@ -578,7 +611,7 @@
   <!-- ==================== SETTINGS ==================== -->
   <div class="section" id="sec-settings">
     <div class="card">
-      <div class="card-title">&#127978; Business Branding</div>
+      <div class="card-title"><span class="icon">&#127978;</span> Business Branding</div>
       <div class="brand-preview">
         <div class="logo-placeholder" id="logoPreview">&#128295;</div>
         <div class="company-name" id="brandName">Your Business Name</div>
@@ -590,7 +623,7 @@
       </div>
       <div class="form-group">
         <label>Business Name</label>
-        <input type="text" id="bizName" placeholder="e.g. Smith's Auto Repairs" oninput="updateBrandPreview()">
+        <input type="text" id="bizName" placeholder="e.g. Macs Autos" oninput="updateBrandPreview()">
       </div>
       <div class="form-group">
         <label>ABN (optional)</label>
@@ -603,7 +636,7 @@
         </div>
         <div class="form-group">
           <label>Email</label>
-          <input type="email" id="bizEmail" placeholder="info@smithsauto.com.au">
+          <input type="email" id="bizEmail" placeholder="info@macsautos.com.au">
         </div>
       </div>
       <div class="form-group">
@@ -613,7 +646,7 @@
     </div>
 
     <div class="card">
-      <div class="card-title">&#9881; Invoice Settings</div>
+      <div class="card-title"><span class="icon">&#9881;</span> Invoice Settings</div>
       <div class="form-group">
         <label>Invoice Number Prefix</label>
         <input type="text" id="invPrefix" placeholder="INV-" value="INV-">
@@ -664,6 +697,9 @@
 </div>
 
 <script>
+// ========== DEFAULT LOGO ==========
+const DEFAULT_LOGO = 'logo-small.png';
+
 // ========== DATA STORE ==========
 const DB = {
   get(key, def) {
@@ -675,7 +711,7 @@ const DB = {
 
 // ========== STATE ==========
 let settings = DB.get('settings', {
-  bizName: '', bizPhone: '', bizEmail: '', bizAddress: '', bizABN: '',
+  bizName: 'Macs Autos', bizPhone: '', bizEmail: '', bizAddress: '', bizABN: '',
   invPrefix: 'INV-', invNextNum: 1001, taxEnabled: false,
   payTerms: 'Payment due within 14 days', currSymbol: '$', logo: null
 });
@@ -683,9 +719,12 @@ let services = DB.get('services', [
   { type: 'Labor', name: 'Oil Change', price: 80 },
   { type: 'Labor', name: 'Brake Pad Replacement', price: 250 },
   { type: 'Labor', name: 'Tyre Rotation', price: 50 },
+  { type: 'Labor', name: 'Wheel Alignment', price: 90 },
+  { type: 'Labor', name: 'Diagnostic Scan', price: 60 },
   { type: 'Part', name: 'Oil Filter', price: 15 },
   { type: 'Part', name: 'Brake Pads (pair)', price: 85 },
   { type: 'Part', name: 'Air Filter', price: 25 },
+  { type: 'Part', name: 'Spark Plugs (set of 4)', price: 40 },
 ]);
 let invoices = DB.get('invoices', []);
 let lineItemData = [];
@@ -766,7 +805,7 @@ function toggleQuickAdd() {
     services.forEach((s, i) => {
       menu.innerHTML += `<div class="quick-add-option" onclick="quickAdd(${i})">
         <span>${escHtml(s.name)} <small style="color:#999">(${s.type})</small></span>
-        <span style="font-weight:600">${settings.currSymbol}${s.price.toFixed(2)}</span>
+        <span style="font-weight:700;color:var(--red)">${settings.currSymbol}${s.price.toFixed(2)}</span>
       </div>`;
     });
   }
@@ -867,6 +906,8 @@ function saveSettings() {
   settings.payTerms = document.getElementById('payTerms').value.trim();
   settings.currSymbol = document.getElementById('currSymbol').value.trim() || '$';
   DB.set('settings', settings);
+  // Update header
+  document.querySelector('.header-text h1').textContent = settings.bizName || 'Macs Autos';
   toast('Settings saved!');
   updateTotals();
 }
@@ -889,6 +930,7 @@ function handleLogoUpload(e) {
   reader.onload = function(ev) {
     settings.logo = ev.target.result;
     document.getElementById('logoPreview').innerHTML = `<img src="${settings.logo}">`;
+    document.getElementById('headerLogo').src = settings.logo;
     DB.set('settings', settings);
     toast('Logo uploaded!');
   };
@@ -1011,60 +1053,72 @@ function buildPDF(inv) {
   const sym = settings.currSymbol;
   const pageW = doc.internal.pageSize.width;
 
-  // Colors
-  const primary = [26, 26, 46];
-  const accent = [233, 69, 96];
+  // Colors - Macs Autos brand
+  const red = [204, 0, 0];
+  const black = [26, 26, 26];
+  const gray = [100, 100, 100];
+  const lightGray = [245, 245, 245];
 
-  // Header bar
-  doc.setFillColor(...primary);
-  doc.rect(0, 0, pageW, 42, 'F');
+  // Clean white header with red accent line
+  doc.setFillColor(255, 255, 255);
+  doc.rect(0, 0, pageW, 44, 'F');
+  // Red accent stripe at top
+  doc.setFillColor(...red);
+  doc.rect(0, 0, pageW, 4, 'F');
 
   // Logo
-  let logoX = 14;
-  if (settings.logo) {
+  let textStartX = 14;
+  const logoSrc = settings.logo || null;
+  if (logoSrc) {
     try {
-      doc.addImage(settings.logo, 'PNG', 14, 6, 30, 30);
-      logoX = 50;
-    } catch(e) { logoX = 14; }
+      doc.addImage(logoSrc, 'PNG', 14, 8, 32, 32);
+      textStartX = 52;
+    } catch(e) { textStartX = 14; }
   }
 
   // Company name
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(20);
+  doc.setTextColor(...black);
+  doc.setFontSize(22);
   doc.setFont(undefined, 'bold');
-  doc.text(settings.bizName || 'Mechanic Invoice Pro', logoX, 18);
+  doc.text(settings.bizName || 'Macs Autos', textStartX, 20);
 
-  // Company details in header
+  // Company details
   doc.setFontSize(9);
   doc.setFont(undefined, 'normal');
+  doc.setTextColor(...gray);
   let headerLine = '';
   if (settings.bizPhone) headerLine += settings.bizPhone + '  |  ';
   if (settings.bizEmail) headerLine += settings.bizEmail + '  |  ';
   if (settings.bizAddress) headerLine += settings.bizAddress;
   if (headerLine.endsWith('  |  ')) headerLine = headerLine.slice(0, -5);
-  if (headerLine) doc.text(headerLine, logoX, 26);
-  if (settings.bizABN) doc.text('ABN: ' + settings.bizABN, logoX, 33);
+  if (headerLine) doc.text(headerLine, textStartX, 28);
+  if (settings.bizABN) doc.text('ABN: ' + settings.bizABN, textStartX, 35);
 
-  // INVOICE title
-  doc.setTextColor(...accent);
-  doc.setFontSize(28);
+  // INVOICE title - right aligned
+  doc.setTextColor(...red);
+  doc.setFontSize(30);
   doc.setFont(undefined, 'bold');
   doc.text('INVOICE', pageW - 14, 20, { align: 'right' });
 
   // Invoice info
-  doc.setTextColor(100, 100, 100);
+  doc.setTextColor(...gray);
   doc.setFontSize(10);
   doc.setFont(undefined, 'normal');
   doc.text(inv.id, pageW - 14, 28, { align: 'right' });
   doc.text('Date: ' + inv.date, pageW - 14, 35, { align: 'right' });
 
+  // Thin red line separator
+  doc.setDrawColor(...red);
+  doc.setLineWidth(1);
+  doc.line(14, 46, pageW - 14, 46);
+
   // Customer section
-  let y = 52;
-  doc.setFillColor(245, 245, 245);
+  let y = 54;
+  doc.setFillColor(...lightGray);
   doc.roundedRect(14, y, pageW - 28, 38, 3, 3, 'F');
 
-  doc.setTextColor(...primary);
-  doc.setFontSize(11);
+  doc.setTextColor(...red);
+  doc.setFontSize(10);
   doc.setFont(undefined, 'bold');
   doc.text('BILL TO', 20, y + 10);
 
@@ -1098,12 +1152,13 @@ function buildPDF(inv) {
     body: tableBody,
     theme: 'striped',
     headStyles: {
-      fillColor: primary,
+      fillColor: red,
       textColor: [255, 255, 255],
       fontStyle: 'bold',
       fontSize: 10
     },
-    bodyStyles: { fontSize: 10 },
+    bodyStyles: { fontSize: 10, textColor: [40, 40, 40] },
+    alternateRowStyles: { fillColor: [252, 245, 245] },
     columnStyles: {
       0: { cellWidth: 22 },
       2: { cellWidth: 18, halign: 'center' },
@@ -1113,15 +1168,15 @@ function buildPDF(inv) {
     margin: { left: 14, right: 14 }
   });
 
-  y = doc.lastAutoTable.finalY + 10;
+  y = doc.lastAutoTable.finalY + 12;
 
   // Totals box
   const totalsX = pageW - 90;
-  doc.setFillColor(245, 245, 245);
+  doc.setFillColor(...lightGray);
   doc.roundedRect(totalsX, y, 76, settings.taxEnabled ? 42 : 30, 3, 3, 'F');
 
   doc.setFontSize(10);
-  doc.setTextColor(100, 100, 100);
+  doc.setTextColor(...gray);
   doc.text('Subtotal:', totalsX + 6, y + 10);
   doc.text(sym + inv.subtotal.toFixed(2), totalsX + 70, y + 10, { align: 'right' });
 
@@ -1131,7 +1186,7 @@ function buildPDF(inv) {
   }
 
   const totalY = y + (settings.taxEnabled ? 34 : 22);
-  doc.setFillColor(...accent);
+  doc.setFillColor(...red);
   doc.roundedRect(totalsX, totalY - 8, 76, 14, 3, 3, 'F');
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(12);
@@ -1145,7 +1200,7 @@ function buildPDF(inv) {
   if (inv.notes) {
     doc.setFont(undefined, 'bold');
     doc.setFontSize(10);
-    doc.setTextColor(...primary);
+    doc.setTextColor(...black);
     doc.text('Notes:', 14, y);
     doc.setFont(undefined, 'normal');
     doc.setTextColor(80, 80, 80);
@@ -1157,18 +1212,21 @@ function buildPDF(inv) {
   // Payment terms
   if (settings.payTerms) {
     y += 6;
-    doc.setFillColor(245, 245, 245);
+    doc.setFillColor(...lightGray);
     doc.roundedRect(14, y, pageW - 28, 14, 3, 3, 'F');
     doc.setFontSize(9);
-    doc.setTextColor(100, 100, 100);
+    doc.setTextColor(...gray);
     doc.text(settings.payTerms, pageW / 2, y + 9, { align: 'center' });
   }
 
   // Footer
   const pageH = doc.internal.pageSize.height;
+  doc.setDrawColor(...red);
+  doc.setLineWidth(0.5);
+  doc.line(14, pageH - 18, pageW - 14, pageH - 18);
   doc.setFontSize(8);
   doc.setTextColor(180, 180, 180);
-  doc.text('Generated by Mechanic Invoice Pro', pageW / 2, pageH - 10, { align: 'center' });
+  doc.text('Generated by Macs Autos Invoice System', pageW / 2, pageH - 10, { align: 'center' });
 
   // Save
   const filename = inv.id.replace(/[^a-zA-Z0-9-]/g, '') + '_' + inv.customer.name.replace(/\s+/g, '_') + '.pdf';
@@ -1185,6 +1243,12 @@ function escHtml(str) {
 
 // ========== INIT ==========
 document.addEventListener('DOMContentLoaded', () => {
+  // Load custom logo into header if saved
+  if (settings.logo) {
+    document.getElementById('headerLogo').src = settings.logo;
+  }
+  // Update header name
+  document.querySelector('.header-text h1').textContent = settings.bizName || 'Macs Autos';
   loadSettings();
   renderLineItems();
   updateTotals();
