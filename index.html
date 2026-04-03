@@ -555,7 +555,7 @@
     </div>
     <div style="height: 8px"></div>
     <div class="actions-bar">
-      <button class="btn btn-success btn-block" onclick="saveInvoice()">&#128190; Save Invoice</button>
+      <button class="btn btn-success btn-block" id="saveBtn" onclick="saveInvoice()">&#128190; Save New Invoice</button>
     </div>
   </div>
 
@@ -759,6 +759,7 @@ let services = DB.get('services', [
 ]);
 let invoices = DB.get('invoices', []);
 let lineItemData = [];
+let editingInvoiceIdx = -1; // -1 = new invoice, >= 0 = editing existing
 
 // ========== NAVIGATION ==========
 function showSection(name) {
@@ -986,30 +987,51 @@ function saveInvoice() {
 
   const sub = lineItemData.reduce((s, it) => s + it.qty * it.rate, 0);
   const tax = settings.taxEnabled ? sub * 0.1 : 0;
-  const inv = {
-    id: settings.invPrefix + settings.invNextNum,
-    date: new Date().toISOString().split('T')[0],
-    customer: {
+
+  if (editingInvoiceIdx >= 0) {
+    // Update existing invoice
+    const inv = invoices[editingInvoiceIdx];
+    inv.customer = {
       name: custName,
       phone: document.getElementById('custPhone').value.trim(),
       email: document.getElementById('custEmail').value.trim(),
       vehicle: document.getElementById('custVehicle').value.trim(),
       rego: document.getElementById('custRego').value.trim(),
-    },
-    items: JSON.parse(JSON.stringify(lineItemData)),
-    subtotal: sub,
-    tax: tax,
-    total: sub + tax,
-    notes: document.getElementById('invoiceNotes').value.trim()
-  };
-
-  invoices.unshift(inv);
-  DB.set('invoices', invoices);
-  settings.invNextNum++;
-  DB.set('settings', settings);
-  toast('Invoice ' + inv.id + ' saved!');
+    };
+    inv.items = JSON.parse(JSON.stringify(lineItemData));
+    inv.subtotal = sub;
+    inv.tax = tax;
+    inv.total = sub + tax;
+    inv.notes = document.getElementById('invoiceNotes').value.trim();
+    DB.set('invoices', invoices);
+    toast('Invoice ' + inv.id + ' updated!');
+  } else {
+    // Create new invoice
+    const inv = {
+      id: settings.invPrefix + settings.invNextNum,
+      date: new Date().toISOString().split('T')[0],
+      customer: {
+        name: custName,
+        phone: document.getElementById('custPhone').value.trim(),
+        email: document.getElementById('custEmail').value.trim(),
+        vehicle: document.getElementById('custVehicle').value.trim(),
+        rego: document.getElementById('custRego').value.trim(),
+      },
+      items: JSON.parse(JSON.stringify(lineItemData)),
+      subtotal: sub,
+      tax: tax,
+      total: sub + tax,
+      notes: document.getElementById('invoiceNotes').value.trim()
+    };
+    invoices.unshift(inv);
+    DB.set('invoices', invoices);
+    settings.invNextNum++;
+    DB.set('settings', settings);
+    toast('Invoice ' + inv.id + ' saved!');
+  }
 
   // Reset form
+  editingInvoiceIdx = -1;
   document.getElementById('custName').value = '';
   document.getElementById('custPhone').value = '';
   document.getElementById('custEmail').value = '';
@@ -1018,6 +1040,7 @@ function saveInvoice() {
   document.getElementById('invoiceNotes').value = '';
   lineItemData = [];
   renderLineItems();
+  updateSaveButton();
 }
 
 // ========== HISTORY ==========
@@ -1055,6 +1078,7 @@ function deleteInvoice(i) {
 
 function reloadInvoice(i) {
   const inv = invoices[i];
+  editingInvoiceIdx = i;
   document.getElementById('custName').value = inv.customer.name;
   document.getElementById('custPhone').value = inv.customer.phone;
   document.getElementById('custEmail').value = inv.customer.email;
@@ -1064,7 +1088,17 @@ function reloadInvoice(i) {
   lineItemData = JSON.parse(JSON.stringify(inv.items));
   renderLineItems();
   showSection('invoice');
-  toast('Loaded ' + inv.id);
+  updateSaveButton();
+  toast('Editing ' + inv.id);
+}
+
+function updateSaveButton() {
+  const btn = document.getElementById('saveBtn');
+  if (editingInvoiceIdx >= 0) {
+    btn.innerHTML = '&#128190; Update Invoice';
+  } else {
+    btn.innerHTML = '&#128190; Save New Invoice';
+  }
 }
 
 function regeneratePDF(i) {
