@@ -667,6 +667,10 @@
         <label>Currency Symbol</label>
         <input type="text" id="currSymbol" value="$" style="width:60px;">
       </div>
+      <div class="form-group">
+        <label>Warranty / Guarantee Text (appears on every PDF)</label>
+        <textarea id="warrantyText" rows="3" placeholder="Your warranty statement..."></textarea>
+      </div>
     </div>
 
     <button class="btn btn-primary btn-block" onclick="saveSettings()">&#128190; Save Settings</button>
@@ -713,7 +717,8 @@ const DB = {
 let settings = DB.get('settings', {
   bizName: 'Macs Autos', bizPhone: '', bizEmail: '', bizAddress: '', bizABN: '',
   invPrefix: 'INV-', invNextNum: 1001, taxEnabled: false,
-  payTerms: 'Payment due within 14 days', currSymbol: '$', logo: null
+  payTerms: 'Payment due within 14 days', currSymbol: '$', logo: null,
+  warrantyText: 'Macs Autos warrants that all mechanical repairs performed and parts supplied as part of this service will be free from defects in materials and workmanship for a period of 6 months or 10,000 km (whichever occurs first) from the date of this invoice.'
 });
 let services = DB.get('services', [
   { type: 'Labor', name: 'Oil Change', price: 80 },
@@ -888,6 +893,7 @@ function loadSettings() {
   document.getElementById('invNextNum').value = settings.invNextNum;
   document.getElementById('payTerms').value = settings.payTerms;
   document.getElementById('currSymbol').value = settings.currSymbol;
+  document.getElementById('warrantyText').value = settings.warrantyText || '';
   document.getElementById('taxToggle').classList.toggle('on', settings.taxEnabled);
   updateBrandPreview();
   if (settings.logo) {
@@ -905,6 +911,7 @@ function saveSettings() {
   settings.invNextNum = parseInt(document.getElementById('invNextNum').value) || 1001;
   settings.payTerms = document.getElementById('payTerms').value.trim();
   settings.currSymbol = document.getElementById('currSymbol').value.trim() || '$';
+  settings.warrantyText = document.getElementById('warrantyText').value.trim();
   DB.set('settings', settings);
   // Update header
   document.querySelector('.header-text h1').textContent = settings.bizName || 'Macs Autos';
@@ -1052,94 +1059,94 @@ function buildPDF(inv) {
   const doc = new jsPDF();
   const sym = settings.currSymbol;
   const pageW = doc.internal.pageSize.width;
+  const pageH = doc.internal.pageSize.height;
 
-  // Colors - Macs Autos brand
+  // Colors - Macs Autos brand (red/black, NO yellow)
   const red = [204, 0, 0];
   const black = [26, 26, 26];
-  const gray = [100, 100, 100];
-  const lightGray = [245, 245, 245];
+  const gray = [120, 120, 120];
+  const lightGray = [247, 247, 247];
+  const midGray = [200, 200, 200];
 
-  // Clean white header with red accent line
-  doc.setFillColor(255, 255, 255);
-  doc.rect(0, 0, pageW, 44, 'F');
-  // Red accent stripe at top
-  doc.setFillColor(...red);
-  doc.rect(0, 0, pageW, 4, 'F');
+  // ---- TOP SECTION: Logo left, Company info right, INVOICE top-right ----
 
-  // Logo
-  let textStartX = 14;
+  // Logo top-left
   const logoSrc = settings.logo || null;
   if (logoSrc) {
-    try {
-      doc.addImage(logoSrc, 'PNG', 14, 8, 32, 32);
-      textStartX = 52;
-    } catch(e) { textStartX = 14; }
+    try { doc.addImage(logoSrc, 'PNG', 14, 10, 36, 36); } catch(e) {}
   }
 
-  // Company name
+  // "INVOICE" title top-right
   doc.setTextColor(...black);
-  doc.setFontSize(22);
+  doc.setFontSize(26);
   doc.setFont(undefined, 'bold');
-  doc.text(settings.bizName || 'Macs Autos', textStartX, 20);
+  doc.text('INVOICE', pageW - 14, 18, { align: 'right' });
 
-  // Company details
+  // Company details below INVOICE title, right-aligned
   doc.setFontSize(9);
   doc.setFont(undefined, 'normal');
   doc.setTextColor(...gray);
-  let headerLine = '';
-  if (settings.bizPhone) headerLine += settings.bizPhone + '  |  ';
-  if (settings.bizEmail) headerLine += settings.bizEmail + '  |  ';
-  if (settings.bizAddress) headerLine += settings.bizAddress;
-  if (headerLine.endsWith('  |  ')) headerLine = headerLine.slice(0, -5);
-  if (headerLine) doc.text(headerLine, textStartX, 28);
-  if (settings.bizABN) doc.text('ABN: ' + settings.bizABN, textStartX, 35);
-
-  // INVOICE title - right aligned
-  doc.setTextColor(...red);
-  doc.setFontSize(30);
+  let rightY = 26;
+  const bizName = settings.bizName || 'Macs Autos';
   doc.setFont(undefined, 'bold');
-  doc.text('INVOICE', pageW - 14, 20, { align: 'right' });
-
-  // Invoice info
+  doc.setTextColor(...black);
+  doc.text(bizName, pageW - 14, rightY, { align: 'right' });
+  rightY += 5;
+  doc.setFont(undefined, 'normal');
   doc.setTextColor(...gray);
-  doc.setFontSize(10);
-  doc.setFont(undefined, 'normal');
-  doc.text(inv.id, pageW - 14, 28, { align: 'right' });
-  doc.text('Date: ' + inv.date, pageW - 14, 35, { align: 'right' });
+  if (settings.bizAddress) { doc.text(settings.bizAddress, pageW - 14, rightY, { align: 'right' }); rightY += 5; }
+  if (settings.bizPhone) { doc.text(settings.bizPhone, pageW - 14, rightY, { align: 'right' }); rightY += 5; }
+  if (settings.bizEmail) { doc.text(settings.bizEmail, pageW - 14, rightY, { align: 'right' }); rightY += 5; }
+  if (settings.bizABN) { doc.text('ABN: ' + settings.bizABN, pageW - 14, rightY, { align: 'right' }); rightY += 5; }
 
-  // Thin red line separator
-  doc.setDrawColor(...red);
-  doc.setLineWidth(1);
-  doc.line(14, 46, pageW - 14, 46);
-
-  // Customer section
+  // ---- CUSTOMER + INVOICE INFO SECTION ----
   let y = 54;
-  doc.setFillColor(...lightGray);
-  doc.roundedRect(14, y, pageW - 28, 38, 3, 3, 'F');
 
+  // Customer details - left side
   doc.setTextColor(...red);
-  doc.setFontSize(10);
+  doc.setFontSize(9);
   doc.setFont(undefined, 'bold');
-  doc.text('BILL TO', 20, y + 10);
-
+  doc.text('Bill To:', 14, y);
   doc.setFont(undefined, 'normal');
-  doc.setFontSize(10);
   doc.setTextColor(60, 60, 60);
-  doc.text(inv.customer.name, 20, y + 18);
-  let custLine2 = [];
-  if (inv.customer.phone) custLine2.push(inv.customer.phone);
-  if (inv.customer.email) custLine2.push(inv.customer.email);
-  if (custLine2.length) doc.text(custLine2.join('  |  '), 20, y + 25);
-  let custLine3 = [];
-  if (inv.customer.vehicle) custLine3.push('Vehicle: ' + inv.customer.vehicle);
-  if (inv.customer.rego) custLine3.push('Rego: ' + inv.customer.rego);
-  if (custLine3.length) doc.text(custLine3.join('  |  '), 20, y + 32);
+  doc.setFontSize(10);
+  y += 6;
+  doc.setFont(undefined, 'bold');
+  doc.text(inv.customer.name, 14, y);
+  doc.setFont(undefined, 'normal');
+  y += 5;
+  if (inv.customer.phone) { doc.text(inv.customer.phone, 14, y); y += 5; }
+  if (inv.customer.email) { doc.text(inv.customer.email, 14, y); y += 5; }
+  if (inv.customer.vehicle) { doc.text('Vehicle: ' + inv.customer.vehicle, 14, y); y += 5; }
+  if (inv.customer.rego) { doc.text('Rego: ' + inv.customer.rego, 14, y); y += 5; }
 
-  y += 48;
+  // Invoice info - right side (aligned with customer section)
+  const infoX = pageW - 70;
+  const valX = pageW - 14;
+  let iy = 54;
+  doc.setFontSize(9);
+  doc.setTextColor(...gray);
+  doc.text('Invoice No.:', infoX, iy);
+  doc.setTextColor(...black);
+  doc.setFont(undefined, 'bold');
+  doc.text(inv.id, valX, iy, { align: 'right' });
+  iy += 7;
+  doc.setFont(undefined, 'normal');
+  doc.setTextColor(...gray);
+  doc.text('Issue date:', infoX, iy);
+  doc.setTextColor(...black);
+  doc.text(inv.date, valX, iy, { align: 'right' });
+  iy += 7;
+  doc.setTextColor(...gray);
+  doc.text('Due date:', infoX, iy);
+  doc.setTextColor(...red);
+  doc.setFont(undefined, 'bold');
+  doc.text(inv.date, valX, iy, { align: 'right' });
 
-  // Line items table
+  y = Math.max(y, iy) + 10;
+
+  // ---- LINE ITEMS TABLE ----
   const tableBody = inv.items.map(it => [
-    it.type,
     it.name,
     it.qty.toString(),
     sym + it.rate.toFixed(2),
@@ -1148,85 +1155,123 @@ function buildPDF(inv) {
 
   doc.autoTable({
     startY: y,
-    head: [['Type', 'Description', 'Qty', 'Rate', 'Amount']],
+    head: [['DESCRIPTION', 'QUANTITY', 'UNIT PRICE', 'AMOUNT']],
     body: tableBody,
-    theme: 'striped',
+    theme: 'plain',
     headStyles: {
       fillColor: red,
       textColor: [255, 255, 255],
       fontStyle: 'bold',
-      fontSize: 10
+      fontSize: 9,
+      cellPadding: 5
     },
-    bodyStyles: { fontSize: 10, textColor: [40, 40, 40] },
-    alternateRowStyles: { fillColor: [252, 245, 245] },
+    bodyStyles: {
+      fontSize: 9,
+      textColor: [50, 50, 50],
+      cellPadding: 5,
+      lineColor: midGray,
+      lineWidth: 0.3
+    },
     columnStyles: {
-      0: { cellWidth: 22 },
-      2: { cellWidth: 18, halign: 'center' },
-      3: { cellWidth: 30, halign: 'right' },
-      4: { cellWidth: 30, halign: 'right', fontStyle: 'bold' }
+      0: { cellWidth: 'auto' },
+      1: { cellWidth: 28, halign: 'center' },
+      2: { cellWidth: 32, halign: 'right' },
+      3: { cellWidth: 32, halign: 'right', fontStyle: 'bold' }
     },
-    margin: { left: 14, right: 14 }
+    margin: { left: 14, right: 14 },
+    didDrawCell: function(data) {
+      // Add bottom border to each row
+      if (data.section === 'body') {
+        doc.setDrawColor(...midGray);
+        doc.setLineWidth(0.2);
+        doc.line(data.cell.x, data.cell.y + data.cell.height, data.cell.x + data.cell.width, data.cell.y + data.cell.height);
+      }
+    }
   });
 
-  y = doc.lastAutoTable.finalY + 12;
+  y = doc.lastAutoTable.finalY + 8;
 
-  // Totals box
-  const totalsX = pageW - 90;
-  doc.setFillColor(...lightGray);
-  doc.roundedRect(totalsX, y, 76, settings.taxEnabled ? 42 : 30, 3, 3, 'F');
+  // ---- TOTALS - right aligned ----
+  const totW = 80;
+  const totX = pageW - 14 - totW;
 
-  doc.setFontSize(10);
+  // Subtotal line
+  doc.setFontSize(9);
   doc.setTextColor(...gray);
-  doc.text('Subtotal:', totalsX + 6, y + 10);
-  doc.text(sym + inv.subtotal.toFixed(2), totalsX + 70, y + 10, { align: 'right' });
+  doc.text('TOTAL (' + (settings.currSymbol === '$' ? 'AUD' : '') + '):', totX + 2, y + 6);
+  doc.setTextColor(...black);
+  doc.text(sym + inv.subtotal.toFixed(2), pageW - 14, y + 6, { align: 'right' });
 
   if (settings.taxEnabled) {
-    doc.text('GST (10%):', totalsX + 6, y + 20);
-    doc.text(sym + inv.tax.toFixed(2), totalsX + 70, y + 20, { align: 'right' });
+    y += 8;
+    doc.setTextColor(...gray);
+    doc.text('GST (10%):', totX + 2, y + 6);
+    doc.setTextColor(...black);
+    doc.text(sym + inv.tax.toFixed(2), pageW - 14, y + 6, { align: 'right' });
   }
 
-  const totalY = y + (settings.taxEnabled ? 34 : 22);
-  doc.setFillColor(...red);
-  doc.roundedRect(totalsX, totalY - 8, 76, 14, 3, 3, 'F');
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(12);
+  // Grand total - bold, larger
+  y += 12;
+  doc.setFillColor(...lightGray);
+  doc.rect(totX, y, totW, 12, 'F');
+  doc.setFontSize(13);
   doc.setFont(undefined, 'bold');
-  doc.text('TOTAL:', totalsX + 6, totalY);
-  doc.text(sym + inv.total.toFixed(2), totalsX + 70, totalY, { align: 'right' });
+  doc.setTextColor(...red);
+  doc.text('TOTAL DUE', totX + 4, y + 9);
+  doc.text(sym + inv.total.toFixed(2), pageW - 16, y + 9, { align: 'right' });
 
-  y = totalY + 16;
+  y += 22;
 
-  // Notes
+  // ---- NOTES ----
   if (inv.notes) {
     doc.setFont(undefined, 'bold');
-    doc.setFontSize(10);
+    doc.setFontSize(9);
     doc.setTextColor(...black);
     doc.text('Notes:', 14, y);
     doc.setFont(undefined, 'normal');
     doc.setTextColor(80, 80, 80);
     const noteLines = doc.splitTextToSize(inv.notes, pageW - 28);
-    doc.text(noteLines, 14, y + 7);
-    y += 7 + noteLines.length * 5;
+    doc.text(noteLines, 14, y + 6);
+    y += 6 + noteLines.length * 5;
   }
 
-  // Payment terms
+  // ---- PAYMENT TERMS ----
   if (settings.payTerms) {
-    y += 6;
-    doc.setFillColor(...lightGray);
-    doc.roundedRect(14, y, pageW - 28, 14, 3, 3, 'F');
-    doc.setFontSize(9);
+    y += 4;
+    doc.setFontSize(8);
     doc.setTextColor(...gray);
-    doc.text(settings.payTerms, pageW / 2, y + 9, { align: 'center' });
+    doc.text(settings.payTerms, 14, y);
+    y += 8;
   }
 
-  // Footer
-  const pageH = doc.internal.pageSize.height;
+  // ---- WARRANTY GUARANTEE ----
+  y += 2;
+  // Red line above warranty
   doc.setDrawColor(...red);
   doc.setLineWidth(0.5);
-  doc.line(14, pageH - 18, pageW - 14, pageH - 18);
+  doc.line(14, y, pageW - 14, y);
+  y += 6;
+
+  doc.setFontSize(9);
+  doc.setFont(undefined, 'bold');
+  doc.setTextColor(...red);
+  doc.text('Our Guarantee:', 14, y);
+  y += 5;
+  doc.setFont(undefined, 'normal');
   doc.setFontSize(8);
+  doc.setTextColor(80, 80, 80);
+  const warrantyText = settings.warrantyText || 'Macs Autos warrants that all mechanical repairs performed and parts supplied as part of this service will be free from defects in materials and workmanship for a period of 6 months or 10,000 km (whichever occurs first) from the date of this invoice.';
+  const warrantyLines = doc.splitTextToSize(warrantyText, pageW - 28);
+  doc.text(warrantyLines, 14, y);
+  y += warrantyLines.length * 4 + 4;
+
+  // ---- FOOTER ----
+  doc.setDrawColor(...midGray);
+  doc.setLineWidth(0.3);
+  doc.line(14, pageH - 14, pageW - 14, pageH - 14);
+  doc.setFontSize(7);
   doc.setTextColor(180, 180, 180);
-  doc.text('Generated by Macs Autos Invoice System', pageW / 2, pageH - 10, { align: 'center' });
+  doc.text('Thank you for choosing ' + (settings.bizName || 'Macs Autos'), pageW / 2, pageH - 8, { align: 'center' });
 
   // Save
   const filename = inv.id.replace(/[^a-zA-Z0-9-]/g, '') + '_' + inv.customer.name.replace(/\s+/g, '_') + '.pdf';
