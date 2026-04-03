@@ -2,7 +2,7 @@
   "name": "Mechanic Invoice Pro",
   "short_name": "MechInvoice",
   "description": "Professional invoicing for mechanics - create and send PDF invoices",
-  "start_url": "/",
+  "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#1a1a2e",
   "theme_color": "#e94560",
