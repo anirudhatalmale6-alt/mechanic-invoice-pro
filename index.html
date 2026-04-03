@@ -538,6 +538,17 @@
 
       <div class="totals" id="totalsArea">
         <div class="total-row"><span>Subtotal</span><span id="subtotal">$0.00</span></div>
+        <div class="total-row" id="discountRow">
+          <span>Discount</span>
+          <span style="display:flex;align-items:center;gap:4px;">
+            <input type="number" id="discountVal" value="0" min="0" step="0.01" style="width:60px;padding:4px 6px;border:1px solid var(--border);border-radius:6px;font-size:13px;text-align:right;" oninput="updateTotals()">
+            <select id="discountType" style="padding:4px 6px;border:1px solid var(--border);border-radius:6px;font-size:13px;" onchange="updateTotals()">
+              <option value="%">%</option>
+              <option value="$">$</option>
+            </select>
+            <span id="discountAmt" style="min-width:60px;text-align:right;">-$0.00</span>
+          </span>
+        </div>
         <div class="total-row" id="taxRow" style="display:none"><span>GST (10%)</span><span id="taxAmt">$0.00</span></div>
         <div class="total-row grand"><span>TOTAL</span><span id="grandTotal">$0.00</span></div>
       </div>
@@ -815,12 +826,23 @@ function removeLineItem(i) {
   renderLineItems();
 }
 
+function getDiscount(sub) {
+  const val = parseFloat(document.getElementById('discountVal').value) || 0;
+  const type = document.getElementById('discountType').value;
+  if (val <= 0) return 0;
+  if (type === '%') return Math.min(sub, sub * val / 100);
+  return Math.min(sub, val);
+}
+
 function updateTotals() {
   const sub = lineItemData.reduce((s, it) => s + it.qty * it.rate, 0);
-  const tax = settings.taxEnabled ? sub * 0.1 : 0;
-  const grand = sub + tax;
+  const discount = getDiscount(sub);
+  const afterDiscount = sub - discount;
+  const tax = settings.taxEnabled ? afterDiscount * 0.1 : 0;
+  const grand = afterDiscount + tax;
   const sym = settings.currSymbol;
   document.getElementById('subtotal').textContent = sym + sub.toFixed(2);
+  document.getElementById('discountAmt').textContent = '-' + sym + discount.toFixed(2);
   document.getElementById('taxAmt').textContent = sym + tax.toFixed(2);
   document.getElementById('grandTotal').textContent = sym + grand.toFixed(2);
   document.getElementById('taxRow').style.display = settings.taxEnabled ? 'flex' : 'none';
@@ -986,7 +1008,11 @@ function saveInvoice() {
   if (lineItemData.length === 0) { toast('Add at least one item'); return; }
 
   const sub = lineItemData.reduce((s, it) => s + it.qty * it.rate, 0);
-  const tax = settings.taxEnabled ? sub * 0.1 : 0;
+  const discountVal = parseFloat(document.getElementById('discountVal').value) || 0;
+  const discountType = document.getElementById('discountType').value;
+  const discount = getDiscount(sub);
+  const afterDiscount = sub - discount;
+  const tax = settings.taxEnabled ? afterDiscount * 0.1 : 0;
 
   if (editingInvoiceIdx >= 0) {
     // Update existing invoice
@@ -1000,8 +1026,11 @@ function saveInvoice() {
     };
     inv.items = JSON.parse(JSON.stringify(lineItemData));
     inv.subtotal = sub;
+    inv.discountVal = discountVal;
+    inv.discountType = discountType;
+    inv.discount = discount;
     inv.tax = tax;
-    inv.total = sub + tax;
+    inv.total = afterDiscount + tax;
     inv.notes = document.getElementById('invoiceNotes').value.trim();
     DB.set('invoices', invoices);
     toast('Invoice ' + inv.id + ' updated!');
@@ -1019,8 +1048,11 @@ function saveInvoice() {
       },
       items: JSON.parse(JSON.stringify(lineItemData)),
       subtotal: sub,
+      discountVal: discountVal,
+      discountType: discountType,
+      discount: discount,
       tax: tax,
-      total: sub + tax,
+      total: afterDiscount + tax,
       notes: document.getElementById('invoiceNotes').value.trim()
     };
     invoices.unshift(inv);
@@ -1038,6 +1070,8 @@ function saveInvoice() {
   document.getElementById('custVehicle').value = '';
   document.getElementById('custRego').value = '';
   document.getElementById('invoiceNotes').value = '';
+  document.getElementById('discountVal').value = '0';
+  document.getElementById('discountType').value = '%';
   lineItemData = [];
   renderLineItems();
   updateSaveButton();
@@ -1085,6 +1119,8 @@ function reloadInvoice(i) {
   document.getElementById('custVehicle').value = inv.customer.vehicle;
   document.getElementById('custRego').value = inv.customer.rego || '';
   document.getElementById('invoiceNotes').value = inv.notes || '';
+  document.getElementById('discountVal').value = inv.discountVal || 0;
+  document.getElementById('discountType').value = inv.discountType || '%';
   lineItemData = JSON.parse(JSON.stringify(inv.items));
   renderLineItems();
   showSection('invoice');
@@ -1113,10 +1149,14 @@ function generatePDF() {
   if (lineItemData.length === 0) { toast('Add at least one item'); return; }
 
   const sub = lineItemData.reduce((s, it) => s + it.qty * it.rate, 0);
-  const tax = settings.taxEnabled ? sub * 0.1 : 0;
+  const discountVal = parseFloat(document.getElementById('discountVal').value) || 0;
+  const discountType = document.getElementById('discountType').value;
+  const discount = getDiscount(sub);
+  const afterDiscount = sub - discount;
+  const tax = settings.taxEnabled ? afterDiscount * 0.1 : 0;
   const inv = {
-    id: settings.invPrefix + settings.invNextNum,
-    date: new Date().toISOString().split('T')[0],
+    id: editingInvoiceIdx >= 0 ? invoices[editingInvoiceIdx].id : settings.invPrefix + settings.invNextNum,
+    date: editingInvoiceIdx >= 0 ? invoices[editingInvoiceIdx].date : new Date().toISOString().split('T')[0],
     customer: {
       name: custName,
       phone: document.getElementById('custPhone').value.trim(),
@@ -1126,8 +1166,11 @@ function generatePDF() {
     },
     items: JSON.parse(JSON.stringify(lineItemData)),
     subtotal: sub,
+    discountVal: discountVal,
+    discountType: discountType,
+    discount: discount,
     tax: tax,
-    total: sub + tax,
+    total: afterDiscount + tax,
     notes: document.getElementById('invoiceNotes').value.trim()
   };
 
@@ -1358,7 +1401,10 @@ function buildPDF(inv) {
   doc.line(totX, y, pageW - 14, y);
   y += 2;
 
-  if (settings.taxEnabled) {
+  const hasDiscount = inv.discount && inv.discount > 0;
+  const showBreakdown = settings.taxEnabled || hasDiscount;
+
+  if (showBreakdown) {
     doc.setFontSize(9);
     doc.setFont(undefined, 'normal');
     doc.setTextColor(...gray);
@@ -1366,11 +1412,24 @@ function buildPDF(inv) {
     doc.setTextColor(...black);
     doc.text(sym + inv.subtotal.toFixed(2), pageW - 14, y + 6, { align: 'right' });
     y += 8;
-    doc.setTextColor(...gray);
-    doc.text('GST (10%):', totX + 2, y + 6);
-    doc.setTextColor(...black);
-    doc.text(sym + inv.tax.toFixed(2), pageW - 14, y + 6, { align: 'right' });
-    y += 10;
+
+    if (hasDiscount) {
+      doc.setTextColor(...gray);
+      const discLabel = inv.discountType === '%' ? 'Discount (' + inv.discountVal + '%)' : 'Discount';
+      doc.text(discLabel + ':', totX + 2, y + 6);
+      doc.setTextColor(204, 0, 0);
+      doc.text('-' + sym + inv.discount.toFixed(2), pageW - 14, y + 6, { align: 'right' });
+      y += 8;
+    }
+
+    if (settings.taxEnabled) {
+      doc.setTextColor(...gray);
+      doc.text('GST (10%):', totX + 2, y + 6);
+      doc.setTextColor(...black);
+      doc.text(sym + inv.tax.toFixed(2), pageW - 14, y + 6, { align: 'right' });
+      y += 8;
+    }
+    y += 2;
   }
 
   // Grand total
