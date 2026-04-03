@@ -1143,78 +1143,136 @@ function buildPDF(inv) {
   doc.setFont(undefined, 'bold');
   doc.text(inv.date, valX, iy, { align: 'right' });
 
-  y = Math.max(y, iy) + 10;
+  y = Math.max(y, iy) + 6;
 
-  // ---- LINE ITEMS TABLE ----
-  const tableBody = inv.items.map(it => [
-    it.name,
-    it.qty.toString(),
-    sym + it.rate.toFixed(2),
-    sym + (it.qty * it.rate).toFixed(2)
-  ]);
+  // Thin separator line
+  doc.setDrawColor(...midGray);
+  doc.setLineWidth(0.3);
+  doc.line(14, y, pageW - 14, y);
+  y += 6;
 
-  doc.autoTable({
-    startY: y,
-    head: [['DESCRIPTION', 'QUANTITY', 'UNIT PRICE', 'AMOUNT']],
-    body: tableBody,
-    theme: 'plain',
-    headStyles: {
-      fillColor: red,
-      textColor: [255, 255, 255],
-      fontStyle: 'bold',
-      fontSize: 9,
-      cellPadding: 5
-    },
-    bodyStyles: {
-      fontSize: 9,
-      textColor: [50, 50, 50],
-      cellPadding: 5,
-      lineColor: midGray,
-      lineWidth: 0.3
-    },
-    columnStyles: {
-      0: { cellWidth: 'auto' },
-      1: { cellWidth: 28, halign: 'center' },
-      2: { cellWidth: 32, halign: 'right' },
-      3: { cellWidth: 32, halign: 'right', fontStyle: 'bold' }
-    },
-    margin: { left: 14, right: 14 },
-    didDrawCell: function(data) {
-      // Add bottom border to each row
-      if (data.section === 'body') {
-        doc.setDrawColor(...midGray);
-        doc.setLineWidth(0.2);
-        doc.line(data.cell.x, data.cell.y + data.cell.height, data.cell.x + data.cell.width, data.cell.y + data.cell.height);
-      }
-    }
-  });
+  // ---- SPLIT ITEMS INTO LABOUR AND PARTS ----
+  const labourItems = inv.items.filter(it => it.type === 'Labor');
+  const partItems = inv.items.filter(it => it.type === 'Part');
+  const labourTotal = labourItems.reduce((s, it) => s + it.qty * it.rate, 0);
+  const partsTotal = partItems.reduce((s, it) => s + it.qty * it.rate, 0);
 
-  y = doc.lastAutoTable.finalY + 8;
+  const tableColStyles = {
+    0: { cellWidth: 'auto' },
+    1: { cellWidth: 24, halign: 'center' },
+    2: { cellWidth: 30, halign: 'right' },
+    3: { cellWidth: 30, halign: 'right' }
+  };
+  const tableHeadStyle = {
+    fillColor: red,
+    textColor: [255, 255, 255],
+    fontStyle: 'bold',
+    fontSize: 8,
+    cellPadding: 4
+  };
+  const tableBodyStyle = {
+    fontSize: 9,
+    textColor: [50, 50, 50],
+    cellPadding: 4
+  };
 
-  // ---- TOTALS - right aligned ----
-  const totW = 80;
+  // ---- LABOUR TABLE ----
+  if (labourItems.length > 0) {
+    doc.setFontSize(10);
+    doc.setFont(undefined, 'bold');
+    doc.setTextColor(...black);
+    doc.text('LABOUR', 14, y);
+    y += 3;
+
+    const labourBody = labourItems.map(it => [
+      it.name, it.qty.toString(), sym + it.rate.toFixed(2), sym + (it.qty * it.rate).toFixed(2)
+    ]);
+
+    doc.autoTable({
+      startY: y,
+      head: [['Description', 'Qty', 'Unit Price', 'Amount']],
+      body: labourBody,
+      theme: 'grid',
+      headStyles: tableHeadStyle,
+      bodyStyles: tableBodyStyle,
+      columnStyles: tableColStyles,
+      styles: { lineColor: [220, 220, 220], lineWidth: 0.2 },
+      margin: { left: 14, right: 14 }
+    });
+
+    y = doc.lastAutoTable.finalY;
+    // Labour subtotal
+    doc.setFontSize(9);
+    doc.setFont(undefined, 'bold');
+    doc.setTextColor(...black);
+    doc.text('Labour Subtotal:', pageW - 76, y + 6);
+    doc.text(sym + labourTotal.toFixed(2), pageW - 14, y + 6, { align: 'right' });
+    y += 14;
+  }
+
+  // ---- PARTS TABLE ----
+  if (partItems.length > 0) {
+    doc.setFontSize(10);
+    doc.setFont(undefined, 'bold');
+    doc.setTextColor(...black);
+    doc.text('PARTS', 14, y);
+    y += 3;
+
+    const partsBody = partItems.map(it => [
+      it.name, it.qty.toString(), sym + it.rate.toFixed(2), sym + (it.qty * it.rate).toFixed(2)
+    ]);
+
+    doc.autoTable({
+      startY: y,
+      head: [['Description', 'Qty', 'Unit Price', 'Amount']],
+      body: partsBody,
+      theme: 'grid',
+      headStyles: tableHeadStyle,
+      bodyStyles: tableBodyStyle,
+      columnStyles: tableColStyles,
+      styles: { lineColor: [220, 220, 220], lineWidth: 0.2 },
+      margin: { left: 14, right: 14 }
+    });
+
+    y = doc.lastAutoTable.finalY;
+    // Parts subtotal
+    doc.setFontSize(9);
+    doc.setFont(undefined, 'bold');
+    doc.setTextColor(...black);
+    doc.text('Parts Subtotal:', pageW - 76, y + 6);
+    doc.text(sym + partsTotal.toFixed(2), pageW - 14, y + 6, { align: 'right' });
+    y += 14;
+  }
+
+  // ---- TOTALS ----
+  const totW = 82;
   const totX = pageW - 14 - totW;
 
-  // Subtotal line
-  doc.setFontSize(9);
-  doc.setTextColor(...gray);
-  doc.text('TOTAL (' + (settings.currSymbol === '$' ? 'AUD' : '') + '):', totX + 2, y + 6);
-  doc.setTextColor(...black);
-  doc.text(sym + inv.subtotal.toFixed(2), pageW - 14, y + 6, { align: 'right' });
+  // Thin line above totals
+  doc.setDrawColor(...midGray);
+  doc.setLineWidth(0.3);
+  doc.line(totX, y, pageW - 14, y);
+  y += 2;
 
   if (settings.taxEnabled) {
+    doc.setFontSize(9);
+    doc.setFont(undefined, 'normal');
+    doc.setTextColor(...gray);
+    doc.text('Subtotal:', totX + 2, y + 6);
+    doc.setTextColor(...black);
+    doc.text(sym + inv.subtotal.toFixed(2), pageW - 14, y + 6, { align: 'right' });
     y += 8;
     doc.setTextColor(...gray);
     doc.text('GST (10%):', totX + 2, y + 6);
     doc.setTextColor(...black);
     doc.text(sym + inv.tax.toFixed(2), pageW - 14, y + 6, { align: 'right' });
+    y += 10;
   }
 
-  // Grand total - bold, larger
-  y += 12;
+  // Grand total
   doc.setFillColor(...lightGray);
   doc.rect(totX, y, totW, 12, 'F');
-  doc.setFontSize(13);
+  doc.setFontSize(12);
   doc.setFont(undefined, 'bold');
   doc.setTextColor(...black);
   doc.text('TOTAL DUE', totX + 4, y + 9);
