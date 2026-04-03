@@ -1281,7 +1281,7 @@ function buildPDF(inv) {
   const partsTotal = partItems.reduce((s, it) => s + it.qty * it.rate, 0);
 
   const tableColStyles = {
-    0: { cellWidth: 'auto' },
+    0: { cellWidth: 'auto', overflow: 'linebreak' },
     1: { cellWidth: 24, halign: 'center' },
     2: { cellWidth: 30, halign: 'right' },
     3: { cellWidth: 30, halign: 'right' }
