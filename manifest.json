@@ -1,11 +1,12 @@
 {
-  "name": "Mechanic Invoice Pro",
-  "short_name": "MechInvoice",
-  "description": "Professional invoicing for mechanics - create and send PDF invoices",
-  "start_url": "./index.html",
+  "name": "Macs Autos Invoice",
+  "short_name": "Macs Autos",
+  "description": "Professional invoicing for Macs Autos",
+  "start_url": ".",
+  "scope": ".",
   "display": "standalone",
-  "background_color": "#1a1a2e",
-  "theme_color": "#e94560",
+  "background_color": "#ffffff",
+  "theme_color": "#CC0000",
   "orientation": "any",
   "icons": [
     {

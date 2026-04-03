@@ -1033,12 +1033,24 @@ function renderHistory() {
         <div class="invoice-num">${escHtml(inv.id)}</div>
         <div class="invoice-customer">${escHtml(inv.customer.name)} &mdash; ${inv.date}</div>
       </div>
-      <div>
+      <div style="text-align:right">
         <div class="invoice-amount">${settings.currSymbol}${inv.total.toFixed(2)}</div>
-        <button class="btn btn-outline btn-sm" style="margin-top:4px" onclick="event.stopPropagation();regeneratePDF(${i})">PDF</button>
+        <div style="display:flex;gap:4px;margin-top:4px;justify-content:flex-end">
+          <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();regeneratePDF(${i})">PDF</button>
+          <button class="btn btn-danger btn-sm" onclick="event.stopPropagation();deleteInvoice(${i})">Del</button>
+        </div>
       </div>
     </div>`;
   });
+}
+
+function deleteInvoice(i) {
+  if (confirm('Delete invoice ' + invoices[i].id + '?')) {
+    invoices.splice(i, 1);
+    DB.set('invoices', invoices);
+    renderHistory();
+    toast('Invoice deleted');
+  }
 }
 
 function reloadInvoice(i) {
