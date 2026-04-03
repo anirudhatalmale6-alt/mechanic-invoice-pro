@@ -1103,7 +1103,7 @@ function buildPDF(inv) {
   let y = 54;
 
   // Customer details - left side
-  doc.setTextColor(...red);
+  doc.setTextColor(...gray);
   doc.setFontSize(9);
   doc.setFont(undefined, 'bold');
   doc.text('Bill To:', 14, y);
@@ -1139,7 +1139,7 @@ function buildPDF(inv) {
   iy += 7;
   doc.setTextColor(...gray);
   doc.text('Due date:', infoX, iy);
-  doc.setTextColor(...red);
+  doc.setTextColor(...black);
   doc.setFont(undefined, 'bold');
   doc.text(inv.date, valX, iy, { align: 'right' });
 
@@ -1216,7 +1216,7 @@ function buildPDF(inv) {
   doc.rect(totX, y, totW, 12, 'F');
   doc.setFontSize(13);
   doc.setFont(undefined, 'bold');
-  doc.setTextColor(...red);
+  doc.setTextColor(...black);
   doc.text('TOTAL DUE', totX + 4, y + 9);
   doc.text(sym + inv.total.toFixed(2), pageW - 16, y + 9, { align: 'right' });
 
@@ -1246,15 +1246,15 @@ function buildPDF(inv) {
 
   // ---- WARRANTY GUARANTEE ----
   y += 2;
-  // Red line above warranty
-  doc.setDrawColor(...red);
-  doc.setLineWidth(0.5);
+  // Subtle gray line above warranty
+  doc.setDrawColor(...midGray);
+  doc.setLineWidth(0.3);
   doc.line(14, y, pageW - 14, y);
   y += 6;
 
   doc.setFontSize(9);
   doc.setFont(undefined, 'bold');
-  doc.setTextColor(...red);
+  doc.setTextColor(...black);
   doc.text('Our Guarantee:', 14, y);
   y += 5;
   doc.setFont(undefined, 'normal');
