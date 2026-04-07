@@ -22,6 +22,7 @@
       --text-light: #666666;
       --border: #e0e0e0;
       --success: #27ae60;
+      --blue: #2196F3;
       --radius: 10px;
     }
     body {
@@ -456,6 +457,71 @@
       margin-bottom: 16px;
       color: var(--primary);
     }
+
+    /* Badge styles */
+    .badge {
+      display: inline-block;
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-weight: 600;
+      vertical-align: middle;
+    }
+    .badge-quote { background: var(--blue); color: white; }
+    .badge-invoice { background: var(--primary); color: white; }
+    .badge-paid { background: var(--success); color: white; }
+    .badge-unpaid { background: var(--red-light); color: var(--red); }
+
+    /* Document type toggle */
+    .doc-type-toggle {
+      display: flex;
+      border-radius: 8px;
+      overflow: hidden;
+      border: 2px solid var(--border);
+      margin-bottom: 16px;
+    }
+    .doc-type-toggle button {
+      flex: 1;
+      padding: 10px 16px;
+      border: none;
+      background: var(--bg);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      color: var(--text-light);
+      transition: all 0.2s;
+    }
+    .doc-type-toggle button.active {
+      background: var(--red);
+      color: white;
+    }
+
+    /* Filter bar */
+    .filter-bar {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-bottom: 14px;
+    }
+    .filter-bar button {
+      padding: 6px 14px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      background: white;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      color: var(--text-light);
+      transition: all 0.2s;
+    }
+    .filter-bar button.active {
+      background: var(--red);
+      color: white;
+      border-color: var(--red);
+    }
+
+    /* Quote card style */
+    .invoice-card.quote { border-left-color: var(--blue); }
   </style>
 </head>
 <body>
@@ -484,6 +550,14 @@
 
   <!-- ==================== NEW INVOICE ==================== -->
   <div class="section active" id="sec-invoice">
+    <div class="card">
+      <div class="card-title"><span class="icon">&#128196;</span> Document Type</div>
+      <div class="doc-type-toggle" id="docTypeToggle">
+        <button class="active" onclick="setDocumentType('invoice')">Invoice</button>
+        <button onclick="setDocumentType('quote')">Quotation</button>
+      </div>
+    </div>
+
     <div class="card">
       <div class="card-title"><span class="icon">&#128100;</span> Customer Details</div>
       <div class="form-group">
@@ -562,7 +636,7 @@
     </div>
 
     <div class="actions-bar">
-      <button class="btn btn-primary btn-block" onclick="generatePDF()">&#128196; Generate PDF Invoice</button>
+      <button class="btn btn-primary btn-block" id="pdfBtn" onclick="generatePDF()">&#128196; Generate PDF Invoice</button>
     </div>
     <div style="height: 8px"></div>
     <div class="actions-bar">
@@ -610,11 +684,18 @@
   <!-- ==================== HISTORY ==================== -->
   <div class="section" id="sec-history">
     <div class="card">
-      <div class="card-title"><span class="icon">&#128196;</span> Invoice History</div>
+      <div class="card-title"><span class="icon">&#128196;</span> History</div>
+      <div class="filter-bar" id="filterBar">
+        <button class="active" onclick="setHistoryFilter('all')">All</button>
+        <button onclick="setHistoryFilter('invoice')">Invoices</button>
+        <button onclick="setHistoryFilter('quote')">Quotes</button>
+        <button onclick="setHistoryFilter('paid')">Paid</button>
+        <button onclick="setHistoryFilter('unpaid')">Unpaid</button>
+      </div>
       <div id="historyList"></div>
       <div class="empty-state" id="historyEmpty">
         <div class="icon">&#128196;</div>
-        <p>No invoices yet. Create your first one!</p>
+        <p>No records yet. Create your first one!</p>
       </div>
     </div>
   </div>
@@ -665,6 +746,14 @@
       <div class="form-group">
         <label>Next Invoice Number</label>
         <input type="number" id="invNextNum" value="1001">
+      </div>
+      <div class="form-group">
+        <label>Quotation Number Prefix</label>
+        <input type="text" id="quoPrefix" placeholder="QUO-" value="QUO-">
+      </div>
+      <div class="form-group">
+        <label>Next Quotation Number</label>
+        <input type="number" id="quoNextNum" value="1001">
       </div>
       <div class="toggle-wrap">
         <div class="toggle" id="taxToggle" onclick="toggleTax()"></div>
@@ -765,10 +854,14 @@ const DB = {
 let settings = DB.get('settings', {
   bizName: 'Macs Autos', bizPhone: '', bizEmail: '', bizAddress: '', bizABN: '',
   invPrefix: 'INV-', invNextNum: 1001, taxEnabled: false,
+  quoPrefix: 'QUO-', quoNextNum: 1001,
   payTerms: 'Payment due within 14 days', currSymbol: '$', logo: null,
   warrantyText: 'Macs Autos warrants that all mechanical repairs performed and parts supplied as part of this service will be free from defects in materials and workmanship for a period of 6 months or 10,000 km (whichever occurs first) from the date of this invoice.',
   bankName: '', bankBSB: '', bankAccNum: '', bankAccName: ''
 });
+// Ensure quoPrefix/quoNextNum exist on older settings
+if (!settings.quoPrefix) settings.quoPrefix = 'QUO-';
+if (!settings.quoNextNum) settings.quoNextNum = 1001;
 let services = DB.get('services', [
   { type: 'Labor', name: 'Oil Change', price: 80 },
   { type: 'Labor', name: 'Brake Pad Replacement', price: 250 },
@@ -783,6 +876,8 @@ let services = DB.get('services', [
 let invoices = DB.get('invoices', []);
 let lineItemData = [];
 let editingInvoiceIdx = -1; // -1 = new invoice, >= 0 = editing existing
+let documentType = 'invoice'; // 'invoice' or 'quote'
+let historyFilter = 'all'; // 'all', 'invoice', 'quote', 'paid', 'unpaid'
 
 // ========== NAVIGATION ==========
 function showSection(name) {
@@ -793,6 +888,43 @@ function showSection(name) {
   if (name === 'services') renderServices();
   if (name === 'history') renderHistory();
   if (name === 'settings') loadSettings();
+}
+
+// ========== DOCUMENT TYPE ==========
+function setDocumentType(type) {
+  documentType = type;
+  const btns = document.getElementById('docTypeToggle').querySelectorAll('button');
+  btns.forEach(b => b.classList.remove('active'));
+  if (type === 'invoice') btns[0].classList.add('active');
+  else btns[1].classList.add('active');
+  updateSaveButton();
+  updatePDFButton();
+}
+
+function updatePDFButton() {
+  const btn = document.getElementById('pdfBtn');
+  if (documentType === 'quote') {
+    btn.innerHTML = '&#128196; Generate PDF Quotation';
+  } else {
+    btn.innerHTML = '&#128196; Generate PDF Invoice';
+  }
+}
+
+// ========== HISTORY FILTER ==========
+function setHistoryFilter(filter) {
+  historyFilter = filter;
+  const btns = document.getElementById('filterBar').querySelectorAll('button');
+  btns.forEach(b => b.classList.remove('active'));
+  btns.forEach(b => {
+    if (
+      (filter === 'all' && b.textContent === 'All') ||
+      (filter === 'invoice' && b.textContent === 'Invoices') ||
+      (filter === 'quote' && b.textContent === 'Quotes') ||
+      (filter === 'paid' && b.textContent === 'Paid') ||
+      (filter === 'unpaid' && b.textContent === 'Unpaid')
+    ) b.classList.add('active');
+  });
+  renderHistory();
 }
 
 // ========== TOAST ==========
@@ -952,6 +1084,8 @@ function loadSettings() {
   document.getElementById('bizABN').value = settings.bizABN;
   document.getElementById('invPrefix').value = settings.invPrefix;
   document.getElementById('invNextNum').value = settings.invNextNum;
+  document.getElementById('quoPrefix').value = settings.quoPrefix || 'QUO-';
+  document.getElementById('quoNextNum').value = settings.quoNextNum || 1001;
   document.getElementById('payTerms').value = settings.payTerms;
   document.getElementById('currSymbol').value = settings.currSymbol;
   document.getElementById('warrantyText').value = settings.warrantyText || '';
@@ -974,6 +1108,8 @@ function saveSettings() {
   settings.bizABN = document.getElementById('bizABN').value.trim();
   settings.invPrefix = document.getElementById('invPrefix').value.trim();
   settings.invNextNum = parseInt(document.getElementById('invNextNum').value) || 1001;
+  settings.quoPrefix = document.getElementById('quoPrefix').value.trim() || 'QUO-';
+  settings.quoNextNum = parseInt(document.getElementById('quoNextNum').value) || 1001;
   settings.payTerms = document.getElementById('payTerms').value.trim();
   settings.currSymbol = document.getElementById('currSymbol').value.trim() || '$';
   settings.warrantyText = document.getElementById('warrantyText').value.trim();
@@ -1044,13 +1180,21 @@ function saveInvoice() {
     inv.tax = tax;
     inv.total = afterDiscount + tax;
     inv.notes = document.getElementById('invoiceNotes').value.trim();
+    inv.type = documentType;
+    if (!inv.status) inv.status = 'unpaid';
     DB.set('invoices', invoices);
-    toast('Invoice ' + inv.id + ' updated!');
+    const label = documentType === 'quote' ? 'Quote' : 'Invoice';
+    toast(label + ' ' + inv.id + ' updated!');
   } else {
-    // Create new invoice
+    // Create new record
+    const isQuote = documentType === 'quote';
+    const prefix = isQuote ? (settings.quoPrefix || 'QUO-') : settings.invPrefix;
+    const num = isQuote ? (settings.quoNextNum || 1001) : settings.invNextNum;
     const inv = {
-      id: settings.invPrefix + settings.invNextNum,
+      id: prefix + num,
       date: new Date().toISOString().split('T')[0],
+      type: documentType,
+      status: 'unpaid',
       customer: {
         name: custName,
         phone: document.getElementById('custPhone').value.trim(),
@@ -1069,13 +1213,20 @@ function saveInvoice() {
     };
     invoices.unshift(inv);
     DB.set('invoices', invoices);
-    settings.invNextNum++;
+    if (isQuote) {
+      settings.quoNextNum = num + 1;
+    } else {
+      settings.invNextNum = num + 1;
+    }
     DB.set('settings', settings);
-    toast('Invoice ' + inv.id + ' saved!');
+    const label = isQuote ? 'Quote' : 'Invoice';
+    toast(label + ' ' + inv.id + ' saved!');
   }
 
   // Reset form
   editingInvoiceIdx = -1;
+  documentType = 'invoice';
+  setDocumentType('invoice');
   document.getElementById('custName').value = '';
   document.getElementById('custPhone').value = '';
   document.getElementById('custEmail').value = '';
@@ -1087,6 +1238,7 @@ function saveInvoice() {
   lineItemData = [];
   renderLineItems();
   updateSaveButton();
+  updatePDFButton();
 }
 
 // ========== HISTORY ==========
@@ -1094,19 +1246,58 @@ function renderHistory() {
   const list = document.getElementById('historyList');
   const empty = document.getElementById('historyEmpty');
   if (invoices.length === 0) { list.innerHTML = ''; empty.style.display = 'block'; return; }
+
+  // Filter
+  let filtered = invoices.map((inv, i) => ({ inv, idx: i }));
+  if (historyFilter === 'invoice') filtered = filtered.filter(x => (x.inv.type || 'invoice') === 'invoice');
+  else if (historyFilter === 'quote') filtered = filtered.filter(x => x.inv.type === 'quote');
+  else if (historyFilter === 'paid') filtered = filtered.filter(x => x.inv.status === 'paid');
+  else if (historyFilter === 'unpaid') filtered = filtered.filter(x => (x.inv.status || 'unpaid') !== 'paid');
+
+  if (filtered.length === 0) {
+    list.innerHTML = '';
+    empty.style.display = 'block';
+    empty.querySelector('p').textContent = 'No matching records.';
+    return;
+  }
   empty.style.display = 'none';
   list.innerHTML = '';
-  invoices.forEach((inv, i) => {
-    list.innerHTML += `<div class="invoice-card" onclick="reloadInvoice(${i})">
+  filtered.forEach(({ inv, idx }) => {
+    const type = inv.type || 'invoice';
+    const status = inv.status || 'unpaid';
+    const isQuote = type === 'quote';
+    const typeBadge = isQuote
+      ? '<span class="badge badge-quote">Quote</span>'
+      : '<span class="badge badge-invoice">Invoice</span>';
+    const statusBadge = status === 'paid'
+      ? '<span class="badge badge-paid">Paid</span>'
+      : '<span class="badge badge-unpaid">Unpaid</span>';
+    const convertedLabel = inv.convertedToId
+      ? ' <span style="color:var(--text-light);font-size:11px;font-style:italic;">(Converted)</span>'
+      : '';
+    const cardClass = isQuote ? 'invoice-card quote' : 'invoice-card';
+
+    // Action buttons
+    let actionBtns = `<button class="btn btn-outline btn-sm" onclick="event.stopPropagation();regeneratePDF(${idx})">PDF</button>`;
+    if (isQuote && !inv.convertedToId) {
+      actionBtns += `<button class="btn btn-success btn-sm" onclick="event.stopPropagation();convertQuoteToInvoice(${idx})">Convert</button>`;
+    }
+    if (!isQuote) {
+      const toggleLabel = status === 'paid' ? 'Unpaid' : 'Paid';
+      const toggleClass = status === 'paid' ? 'btn-outline btn-sm' : 'btn-success btn-sm';
+      actionBtns += `<button class="btn ${toggleClass}" onclick="event.stopPropagation();togglePaidStatus(${idx})">${toggleLabel}</button>`;
+    }
+    actionBtns += `<button class="btn btn-danger btn-sm" onclick="event.stopPropagation();deleteInvoice(${idx})">Del</button>`;
+
+    list.innerHTML += `<div class="${cardClass}" onclick="reloadInvoice(${idx})">
       <div>
-        <div class="invoice-num">${escHtml(inv.id)}</div>
+        <div class="invoice-num">${escHtml(inv.id)} ${typeBadge} ${statusBadge}${convertedLabel}</div>
         <div class="invoice-customer">${escHtml(inv.customer.name)} &mdash; ${inv.date}</div>
       </div>
       <div style="text-align:right">
         <div class="invoice-amount">${settings.currSymbol}${inv.total.toFixed(2)}</div>
-        <div style="display:flex;gap:4px;margin-top:4px;justify-content:flex-end">
-          <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();regeneratePDF(${i})">PDF</button>
-          <button class="btn btn-danger btn-sm" onclick="event.stopPropagation();deleteInvoice(${i})">Del</button>
+        <div style="display:flex;gap:4px;margin-top:4px;justify-content:flex-end;flex-wrap:wrap">
+          ${actionBtns}
         </div>
       </div>
     </div>`;
@@ -1114,17 +1305,20 @@ function renderHistory() {
 }
 
 function deleteInvoice(i) {
-  if (confirm('Delete invoice ' + invoices[i].id + '?')) {
+  const type = (invoices[i].type || 'invoice') === 'quote' ? 'quote' : 'invoice';
+  if (confirm('Delete ' + type + ' ' + invoices[i].id + '?')) {
     invoices.splice(i, 1);
     DB.set('invoices', invoices);
     renderHistory();
-    toast('Invoice deleted');
+    toast(type.charAt(0).toUpperCase() + type.slice(1) + ' deleted');
   }
 }
 
 function reloadInvoice(i) {
   const inv = invoices[i];
   editingInvoiceIdx = i;
+  documentType = inv.type || 'invoice';
+  setDocumentType(documentType);
   document.getElementById('custName').value = inv.customer.name;
   document.getElementById('custPhone').value = inv.customer.phone;
   document.getElementById('custEmail').value = inv.customer.email;
@@ -1142,11 +1336,40 @@ function reloadInvoice(i) {
 
 function updateSaveButton() {
   const btn = document.getElementById('saveBtn');
+  const label = documentType === 'quote' ? 'Quote' : 'Invoice';
   if (editingInvoiceIdx >= 0) {
-    btn.innerHTML = '&#128190; Update Invoice';
+    btn.innerHTML = '&#128190; Update ' + label;
   } else {
-    btn.innerHTML = '&#128190; Save New Invoice';
+    btn.innerHTML = '&#128190; Save New ' + label;
   }
+}
+
+function convertQuoteToInvoice(i) {
+  const quote = invoices[i];
+  const newInv = JSON.parse(JSON.stringify(quote));
+  const prefix = settings.invPrefix || 'INV-';
+  const num = settings.invNextNum || 1001;
+  newInv.id = prefix + num;
+  newInv.date = new Date().toISOString().split('T')[0];
+  newInv.type = 'invoice';
+  newInv.status = 'unpaid';
+  delete newInv.convertedToId;
+  invoices.unshift(newInv);
+  // Mark original quote as converted
+  quote.convertedToId = newInv.id;
+  settings.invNextNum = num + 1;
+  DB.set('invoices', invoices);
+  DB.set('settings', settings);
+  renderHistory();
+  toast('Quote converted to Invoice ' + newInv.id);
+}
+
+function togglePaidStatus(i) {
+  const inv = invoices[i];
+  inv.status = (inv.status === 'paid') ? 'unpaid' : 'paid';
+  DB.set('invoices', invoices);
+  renderHistory();
+  toast(inv.id + ' marked as ' + inv.status);
 }
 
 function regeneratePDF(i) {
@@ -1166,9 +1389,26 @@ function generatePDF() {
   const discount = getDiscount(sub);
   const afterDiscount = sub - discount;
   const tax = settings.taxEnabled ? afterDiscount * 0.1 : 0;
+
+  const isQuote = documentType === 'quote';
+  let invId, invDate, invStatus;
+  if (editingInvoiceIdx >= 0) {
+    invId = invoices[editingInvoiceIdx].id;
+    invDate = invoices[editingInvoiceIdx].date;
+    invStatus = invoices[editingInvoiceIdx].status || 'unpaid';
+  } else {
+    const prefix = isQuote ? (settings.quoPrefix || 'QUO-') : settings.invPrefix;
+    const num = isQuote ? (settings.quoNextNum || 1001) : settings.invNextNum;
+    invId = prefix + num;
+    invDate = new Date().toISOString().split('T')[0];
+    invStatus = 'unpaid';
+  }
+
   const inv = {
-    id: editingInvoiceIdx >= 0 ? invoices[editingInvoiceIdx].id : settings.invPrefix + settings.invNextNum,
-    date: editingInvoiceIdx >= 0 ? invoices[editingInvoiceIdx].date : new Date().toISOString().split('T')[0],
+    id: invId,
+    date: invDate,
+    type: documentType,
+    status: invStatus,
     customer: {
       name: custName,
       phone: document.getElementById('custPhone').value.trim(),
@@ -1203,6 +1443,13 @@ function buildPDF(inv) {
   const lightGray = [247, 247, 247];
   const midGray = [200, 200, 200];
 
+  // Determine document type
+  const isQuote = (inv.type || 'invoice') === 'quote';
+  const docTitle = isQuote ? 'QUOTATION' : 'INVOICE';
+  const docNumLabel = isQuote ? 'Quote No.:' : 'Invoice No.:';
+  const totalLabel = isQuote ? 'QUOTE TOTAL' : 'TOTAL DUE';
+  const isPaid = (inv.status === 'paid') && !isQuote;
+
   // ---- TOP SECTION: Logo left, Company info right, INVOICE top-right ----
 
   // Logo top-left
@@ -1211,11 +1458,11 @@ function buildPDF(inv) {
     try { doc.addImage(logoSrc, 'PNG', 14, 10, 36, 36); } catch(e) {}
   }
 
-  // "INVOICE" title top-right
+  // Document title top-right
   doc.setTextColor(...black);
   doc.setFontSize(26);
   doc.setFont(undefined, 'bold');
-  doc.text('INVOICE', pageW - 14, 18, { align: 'right' });
+  doc.text(docTitle, pageW - 14, 18, { align: 'right' });
 
   // Company details below INVOICE title, right-aligned
   doc.setFontSize(9);
@@ -1261,7 +1508,7 @@ function buildPDF(inv) {
   let iy = 54;
   doc.setFontSize(9);
   doc.setTextColor(...gray);
-  doc.text('Invoice No.:', infoX, iy);
+  doc.text(docNumLabel, infoX, iy);
   doc.setTextColor(...black);
   doc.setFont(undefined, 'bold');
   doc.text(inv.id, valX, iy, { align: 'right' });
@@ -1450,8 +1697,16 @@ function buildPDF(inv) {
   doc.setFontSize(12);
   doc.setFont(undefined, 'bold');
   doc.setTextColor(...black);
-  doc.text('TOTAL DUE', totX + 4, y + 9);
+  doc.text(totalLabel, totX + 4, y + 9);
   doc.text(sym + inv.total.toFixed(2), pageW - 16, y + 9, { align: 'right' });
+
+  // Paid stamp next to total
+  if (isPaid) {
+    doc.setFontSize(14);
+    doc.setFont(undefined, 'bold');
+    doc.setTextColor(39, 174, 96);
+    doc.text('PAID', totX - 4, y + 9, { align: 'right' });
+  }
 
   y += 20;
 
