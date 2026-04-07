@@ -522,6 +522,89 @@
 
     /* Quote card style */
     .invoice-card.quote { border-left-color: var(--blue); }
+
+    /* Service Tracker */
+    .tracker-card {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 14px;
+      background: var(--card);
+      border-radius: var(--radius);
+      margin-bottom: 10px;
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--success);
+      transition: box-shadow 0.2s;
+    }
+    .tracker-card:hover { box-shadow: 0 3px 12px rgba(0,0,0,0.1); }
+    .tracker-card.overdue { border-left-color: #e74c3c; background: #fff5f5; }
+    .tracker-card.due-soon { border-left-color: #f39c12; background: #fffbf0; }
+    .tracker-info { flex: 1; }
+    .tracker-customer { font-weight: 700; color: var(--primary); font-size: 15px; }
+    .tracker-vehicle { color: var(--text-light); font-size: 13px; margin-top: 2px; }
+    .tracker-service { font-size: 13px; color: var(--text); margin-top: 4px; }
+    .tracker-dates { font-size: 12px; color: var(--text-light); margin-top: 4px; }
+    .tracker-due { font-weight: 700; font-size: 14px; }
+    .tracker-due.overdue { color: #e74c3c; }
+    .tracker-due.due-soon { color: #f39c12; }
+    .tracker-due.ok { color: var(--success); }
+    .tracker-stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+    .stat-box {
+      background: var(--card);
+      border-radius: var(--radius);
+      padding: 16px;
+      text-align: center;
+      border: 1px solid var(--border);
+    }
+    .stat-num { font-size: 28px; font-weight: 800; }
+    .stat-num.red { color: #e74c3c; }
+    .stat-num.orange { color: #f39c12; }
+    .stat-num.green { color: var(--success); }
+    .stat-label { font-size: 11px; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px; }
+    .tracker-filter-bar {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-bottom: 14px;
+    }
+    .tracker-filter-bar button {
+      padding: 6px 14px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      background: white;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      color: var(--text-light);
+      transition: all 0.2s;
+    }
+    .tracker-filter-bar button.active {
+      background: var(--red);
+      color: white;
+      border-color: var(--red);
+    }
+    .notif-banner {
+      background: linear-gradient(135deg, #CC0000, #a30000);
+      color: white;
+      border-radius: var(--radius);
+      padding: 16px;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .notif-banner p { font-size: 13px; line-height: 1.4; }
+    .notif-banner .btn { background: white; color: var(--red); font-size: 13px; white-space: nowrap; }
+    .notif-banner .btn:hover { background: #f0f0f0; }
+    @media (max-width: 600px) {
+      .tracker-stats { grid-template-columns: 1fr; }
+    }
   </style>
 </head>
 <body>
@@ -543,6 +626,7 @@
   <div class="tab active" data-tab="invoice" onclick="showSection('invoice')">New Invoice</div>
   <div class="tab" data-tab="services" onclick="showSection('services')">Services &amp; Parts</div>
   <div class="tab" data-tab="history" onclick="showSection('history')">History</div>
+  <div class="tab" data-tab="tracker" onclick="showSection('tracker')">Tracker</div>
   <div class="tab" data-tab="settings" onclick="showSection('settings')">Settings</div>
 </div>
 
@@ -696,6 +780,117 @@
       <div class="empty-state" id="historyEmpty">
         <div class="icon">&#128196;</div>
         <p>No records yet. Create your first one!</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== SERVICE TRACKER ==================== -->
+  <div class="section" id="sec-tracker">
+
+    <!-- Notification permission banner -->
+    <div class="notif-banner" id="notifBanner" style="display:none">
+      <p>Enable push notifications to get reminded when a vehicle service is due.</p>
+      <button class="btn btn-sm" onclick="requestNotifPermission()">Enable Notifications</button>
+    </div>
+
+    <!-- Stats -->
+    <div class="tracker-stats">
+      <div class="stat-box">
+        <div class="stat-num red" id="statOverdue">0</div>
+        <div class="stat-label">Overdue</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-num orange" id="statDueSoon">0</div>
+        <div class="stat-label">Due Soon</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-num green" id="statUpToDate">0</div>
+        <div class="stat-label">Up to Date</div>
+      </div>
+    </div>
+
+    <!-- Filter -->
+    <div class="tracker-filter-bar" id="trackerFilterBar">
+      <button class="active" onclick="setTrackerFilter('all')">All</button>
+      <button onclick="setTrackerFilter('overdue')">Overdue</button>
+      <button onclick="setTrackerFilter('due-soon')">Due Soon</button>
+      <button onclick="setTrackerFilter('upcoming')">Up to Date</button>
+    </div>
+
+    <!-- Service list -->
+    <div id="trackerList"></div>
+    <div class="empty-state" id="trackerEmpty" style="display:none">
+      <div class="icon">&#128663;</div>
+      <p>No tracked services yet. Log a service below!</p>
+    </div>
+
+    <!-- Log new service form -->
+    <div class="card" style="margin-top:16px">
+      <div class="card-title"><span class="icon">&#128295;</span> <span id="trackerFormTitle">Log New Service</span></div>
+      <div class="form-group">
+        <label>Customer Name</label>
+        <input type="text" id="trkCustName" placeholder="e.g. John Smith">
+      </div>
+      <div class="form-group">
+        <label>Phone</label>
+        <input type="tel" id="trkCustPhone" placeholder="0412 345 678">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Vehicle</label>
+          <input type="text" id="trkVehicle" placeholder="e.g. 2019 Toyota Hilux">
+        </div>
+        <div class="form-group">
+          <label>Rego</label>
+          <input type="text" id="trkRego" placeholder="ABC-123">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Service Performed</label>
+        <input type="text" id="trkServiceType" placeholder="e.g. Full Service, Oil Change, Brake Replacement">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Service Date</label>
+          <input type="date" id="trkServiceDate">
+        </div>
+        <div class="form-group">
+          <label>Odometer (km)</label>
+          <input type="number" id="trkMileage" placeholder="e.g. 85000">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Next Service Due</label>
+          <input type="date" id="trkNextDue">
+        </div>
+        <div class="form-group">
+          <label>Next Due km (optional)</label>
+          <input type="number" id="trkNextKm" placeholder="e.g. 95000">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Notes (optional)</label>
+        <textarea id="trkNotes" rows="2" placeholder="Any extra details..."></textarea>
+      </div>
+      <div class="actions-bar">
+        <button class="btn btn-primary btn-block" id="trkSaveBtn" onclick="saveTrackerEntry()">&#128190; Log Service</button>
+      </div>
+      <div class="actions-bar" id="trkCancelWrap" style="display:none;margin-top:8px;">
+        <button class="btn btn-outline btn-block" onclick="cancelTrackerEdit()">Cancel Edit</button>
+      </div>
+    </div>
+
+    <!-- Quick preset buttons -->
+    <div class="card" style="margin-top:8px">
+      <div class="card-title"><span class="icon">&#9889;</span> Quick Due Presets</div>
+      <p style="font-size:13px;color:var(--text-light);margin-bottom:12px;">
+        Set the "Next Service Due" date quickly:
+      </p>
+      <div class="actions-bar">
+        <button class="btn btn-outline btn-sm" onclick="setDuePreset(3)">3 Months</button>
+        <button class="btn btn-outline btn-sm" onclick="setDuePreset(6)">6 Months</button>
+        <button class="btn btn-outline btn-sm" onclick="setDuePreset(12)">12 Months</button>
       </div>
     </div>
   </div>
@@ -878,6 +1073,9 @@ let lineItemData = [];
 let editingInvoiceIdx = -1; // -1 = new invoice, >= 0 = editing existing
 let documentType = 'invoice'; // 'invoice' or 'quote'
 let historyFilter = 'all'; // 'all', 'invoice', 'quote', 'paid', 'unpaid'
+let trackerEntries = DB.get('tracker', []);
+let trackerFilter = 'all';
+let editingTrackerIdx = -1;
 
 // ========== NAVIGATION ==========
 function showSection(name) {
@@ -887,6 +1085,7 @@ function showSection(name) {
   document.querySelector(`.tab[data-tab="${name}"]`).classList.add('active');
   if (name === 'services') renderServices();
   if (name === 'history') renderHistory();
+  if (name === 'tracker') renderTracker();
   if (name === 'settings') loadSettings();
 }
 
@@ -1817,12 +2016,310 @@ function buildPDF(inv) {
   toast('PDF downloaded: ' + filename);
 }
 
+// ========== SERVICE TRACKER ==========
+function renderTracker() {
+  checkNotifBanner();
+  updateTrackerStats();
+  renderTrackerList();
+  // Set default service date to today if empty
+  const dateField = document.getElementById('trkServiceDate');
+  if (!dateField.value) dateField.value = new Date().toISOString().split('T')[0];
+}
+
+function checkNotifBanner() {
+  const banner = document.getElementById('notifBanner');
+  if (!('Notification' in window) || !('serviceWorker' in navigator)) {
+    banner.style.display = 'none';
+    return;
+  }
+  banner.style.display = Notification.permission === 'default' ? 'flex' : 'none';
+}
+
+function requestNotifPermission() {
+  if ('Notification' in window) {
+    Notification.requestPermission().then(perm => {
+      checkNotifBanner();
+      if (perm === 'granted') {
+        toast('Notifications enabled!');
+        scheduleNotifications();
+      } else {
+        toast('Notifications blocked - you can enable in browser settings');
+      }
+    });
+  }
+}
+
+function getTrackerStatus(entry) {
+  if (!entry.nextDue) return 'upcoming';
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const due = new Date(entry.nextDue + 'T00:00:00');
+  const diffDays = Math.floor((due - today) / (1000 * 60 * 60 * 24));
+  if (diffDays < 0) return 'overdue';
+  if (diffDays <= 14) return 'due-soon';
+  return 'upcoming';
+}
+
+function getDaysUntilDue(entry) {
+  if (!entry.nextDue) return 999;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const due = new Date(entry.nextDue + 'T00:00:00');
+  return Math.floor((due - today) / (1000 * 60 * 60 * 24));
+}
+
+function updateTrackerStats() {
+  let overdue = 0, dueSoon = 0, upToDate = 0;
+  trackerEntries.forEach(e => {
+    const s = getTrackerStatus(e);
+    if (s === 'overdue') overdue++;
+    else if (s === 'due-soon') dueSoon++;
+    else upToDate++;
+  });
+  document.getElementById('statOverdue').textContent = overdue;
+  document.getElementById('statDueSoon').textContent = dueSoon;
+  document.getElementById('statUpToDate').textContent = upToDate;
+}
+
+function setTrackerFilter(filter) {
+  trackerFilter = filter;
+  const btns = document.getElementById('trackerFilterBar').querySelectorAll('button');
+  btns.forEach(b => b.classList.remove('active'));
+  btns.forEach(b => {
+    if (
+      (filter === 'all' && b.textContent === 'All') ||
+      (filter === 'overdue' && b.textContent === 'Overdue') ||
+      (filter === 'due-soon' && b.textContent === 'Due Soon') ||
+      (filter === 'upcoming' && b.textContent === 'Up to Date')
+    ) b.classList.add('active');
+  });
+  renderTrackerList();
+}
+
+function renderTrackerList() {
+  const list = document.getElementById('trackerList');
+  const empty = document.getElementById('trackerEmpty');
+
+  if (trackerEntries.length === 0) {
+    list.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+
+  // Sort: overdue first, then due-soon, then upcoming
+  let entries = trackerEntries.map((e, i) => ({ entry: e, idx: i }));
+
+  // Filter
+  if (trackerFilter !== 'all') {
+    entries = entries.filter(x => getTrackerStatus(x.entry) === trackerFilter);
+  }
+
+  // Sort by due date ascending (soonest first)
+  entries.sort((a, b) => getDaysUntilDue(a.entry) - getDaysUntilDue(b.entry));
+
+  if (entries.length === 0) {
+    list.innerHTML = '';
+    empty.style.display = 'block';
+    empty.querySelector('p').textContent = 'No matching services.';
+    return;
+  }
+  empty.style.display = 'none';
+
+  list.innerHTML = '';
+  entries.forEach(({ entry, idx }) => {
+    const status = getTrackerStatus(entry);
+    const days = getDaysUntilDue(entry);
+    let dueText, dueClass, cardClass;
+
+    if (status === 'overdue') {
+      dueText = Math.abs(days) + ' day' + (Math.abs(days) !== 1 ? 's' : '') + ' overdue';
+      dueClass = 'overdue';
+      cardClass = 'tracker-card overdue';
+    } else if (status === 'due-soon') {
+      dueText = days === 0 ? 'Due today' : 'Due in ' + days + ' day' + (days !== 1 ? 's' : '');
+      dueClass = 'due-soon';
+      cardClass = 'tracker-card due-soon';
+    } else {
+      dueText = entry.nextDue ? 'Due in ' + days + ' days' : 'No due date set';
+      dueClass = 'ok';
+      cardClass = 'tracker-card';
+    }
+
+    const mileageText = entry.mileage ? ' | ' + Number(entry.mileage).toLocaleString() + ' km' : '';
+    const nextKmText = entry.nextKm ? ' | Next: ' + Number(entry.nextKm).toLocaleString() + ' km' : '';
+
+    list.innerHTML += `<div class="${cardClass}">
+      <div class="tracker-info">
+        <div class="tracker-customer">${escHtml(entry.custName)}</div>
+        <div class="tracker-vehicle">${escHtml(entry.vehicle)} ${entry.rego ? '(' + escHtml(entry.rego) + ')' : ''}</div>
+        <div class="tracker-service">${escHtml(entry.serviceType)}</div>
+        <div class="tracker-dates">Serviced: ${entry.serviceDate}${mileageText}${nextKmText}</div>
+        ${entry.notes ? '<div class="tracker-dates" style="font-style:italic">' + escHtml(entry.notes) + '</div>' : ''}
+      </div>
+      <div style="text-align:right;min-width:120px">
+        <div class="tracker-due ${dueClass}">${dueText}</div>
+        <div style="display:flex;gap:4px;margin-top:8px;justify-content:flex-end;flex-wrap:wrap">
+          <button class="btn btn-outline btn-sm" onclick="editTrackerEntry(${idx})">Edit</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteTrackerEntry(${idx})">Del</button>
+        </div>
+      </div>
+    </div>`;
+  });
+}
+
+function saveTrackerEntry() {
+  const custName = document.getElementById('trkCustName').value.trim();
+  const vehicle = document.getElementById('trkVehicle').value.trim();
+  const serviceType = document.getElementById('trkServiceType').value.trim();
+  const serviceDate = document.getElementById('trkServiceDate').value;
+
+  if (!custName) { toast('Enter customer name'); return; }
+  if (!vehicle) { toast('Enter vehicle details'); return; }
+  if (!serviceType) { toast('Enter service performed'); return; }
+  if (!serviceDate) { toast('Enter service date'); return; }
+
+  const entry = {
+    custName: custName,
+    custPhone: document.getElementById('trkCustPhone').value.trim(),
+    vehicle: vehicle,
+    rego: document.getElementById('trkRego').value.trim(),
+    serviceType: serviceType,
+    serviceDate: serviceDate,
+    mileage: document.getElementById('trkMileage').value.trim(),
+    nextDue: document.getElementById('trkNextDue').value,
+    nextKm: document.getElementById('trkNextKm').value.trim(),
+    notes: document.getElementById('trkNotes').value.trim(),
+    createdAt: new Date().toISOString()
+  };
+
+  if (editingTrackerIdx >= 0) {
+    entry.createdAt = trackerEntries[editingTrackerIdx].createdAt || entry.createdAt;
+    trackerEntries[editingTrackerIdx] = entry;
+    toast('Service record updated!');
+    editingTrackerIdx = -1;
+    document.getElementById('trackerFormTitle').textContent = 'Log New Service';
+    document.getElementById('trkSaveBtn').innerHTML = '&#128190; Log Service';
+    document.getElementById('trkCancelWrap').style.display = 'none';
+  } else {
+    trackerEntries.unshift(entry);
+    toast('Service logged!');
+  }
+
+  DB.set('tracker', trackerEntries);
+  clearTrackerForm();
+  renderTracker();
+  scheduleNotifications();
+}
+
+function clearTrackerForm() {
+  document.getElementById('trkCustName').value = '';
+  document.getElementById('trkCustPhone').value = '';
+  document.getElementById('trkVehicle').value = '';
+  document.getElementById('trkRego').value = '';
+  document.getElementById('trkServiceType').value = '';
+  document.getElementById('trkServiceDate').value = new Date().toISOString().split('T')[0];
+  document.getElementById('trkMileage').value = '';
+  document.getElementById('trkNextDue').value = '';
+  document.getElementById('trkNextKm').value = '';
+  document.getElementById('trkNotes').value = '';
+}
+
+function editTrackerEntry(i) {
+  const e = trackerEntries[i];
+  editingTrackerIdx = i;
+  document.getElementById('trkCustName').value = e.custName || '';
+  document.getElementById('trkCustPhone').value = e.custPhone || '';
+  document.getElementById('trkVehicle').value = e.vehicle || '';
+  document.getElementById('trkRego').value = e.rego || '';
+  document.getElementById('trkServiceType').value = e.serviceType || '';
+  document.getElementById('trkServiceDate').value = e.serviceDate || '';
+  document.getElementById('trkMileage').value = e.mileage || '';
+  document.getElementById('trkNextDue').value = e.nextDue || '';
+  document.getElementById('trkNextKm').value = e.nextKm || '';
+  document.getElementById('trkNotes').value = e.notes || '';
+  document.getElementById('trackerFormTitle').textContent = 'Edit Service Record';
+  document.getElementById('trkSaveBtn').innerHTML = '&#128190; Update Service';
+  document.getElementById('trkCancelWrap').style.display = 'block';
+  // Scroll to form
+  document.getElementById('trkCustName').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  toast('Editing record for ' + e.custName);
+}
+
+function cancelTrackerEdit() {
+  editingTrackerIdx = -1;
+  clearTrackerForm();
+  document.getElementById('trackerFormTitle').textContent = 'Log New Service';
+  document.getElementById('trkSaveBtn').innerHTML = '&#128190; Log Service';
+  document.getElementById('trkCancelWrap').style.display = 'none';
+}
+
+function deleteTrackerEntry(i) {
+  if (confirm('Delete service record for ' + trackerEntries[i].custName + '?')) {
+    trackerEntries.splice(i, 1);
+    DB.set('tracker', trackerEntries);
+    renderTracker();
+    toast('Service record deleted');
+  }
+}
+
+function setDuePreset(months) {
+  const serviceDate = document.getElementById('trkServiceDate').value;
+  const base = serviceDate ? new Date(serviceDate + 'T00:00:00') : new Date();
+  base.setMonth(base.getMonth() + months);
+  document.getElementById('trkNextDue').value = base.toISOString().split('T')[0];
+  toast('Due date set to ' + months + ' months from service date');
+}
+
+// ========== NOTIFICATIONS ==========
+function scheduleNotifications() {
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+  if (!('serviceWorker' in navigator)) return;
+
+  // Check for services due today or overdue - show immediate notification
+  const today = new Date().toISOString().split('T')[0];
+  const notifiedKey = 'mech_notified_' + today;
+  const alreadyNotified = JSON.parse(localStorage.getItem(notifiedKey) || '[]');
+
+  trackerEntries.forEach((entry, i) => {
+    if (!entry.nextDue) return;
+    const status = getTrackerStatus(entry);
+    if ((status === 'overdue' || status === 'due-soon') && !alreadyNotified.includes(i)) {
+      const days = getDaysUntilDue(entry);
+      let body;
+      if (days < 0) {
+        body = entry.vehicle + ' (' + entry.custName + ') - ' + Math.abs(days) + ' days overdue!';
+      } else if (days === 0) {
+        body = entry.vehicle + ' (' + entry.custName + ') - Due today!';
+      } else {
+        body = entry.vehicle + ' (' + entry.custName + ') - Due in ' + days + ' days';
+      }
+
+      try {
+        new Notification('Service Reminder - ' + (settings.bizName || 'Macs Autos'), {
+          body: body,
+          icon: 'icon-192.png',
+          tag: 'tracker-' + i,
+          requireInteraction: true
+        });
+      } catch(e) {}
+
+      alreadyNotified.push(i);
+    }
+  });
+
+  localStorage.setItem(notifiedKey, JSON.stringify(alreadyNotified));
+}
+
+// Check notifications periodically (every 30 min when page is open)
+setInterval(scheduleNotifications, 30 * 60 * 1000);
+
 // ========== BACKUP & RESTORE ==========
 function exportData() {
   const data = {
     settings: settings,
     services: services,
     invoices: invoices,
+    tracker: trackerEntries,
     exportDate: new Date().toISOString()
   };
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -1848,6 +2345,7 @@ function importData(e) {
       if (data.settings) { settings = data.settings; DB.set('settings', settings); }
       if (data.services) { services = data.services; DB.set('services', services); }
       if (data.invoices) { invoices = data.invoices; DB.set('invoices', invoices); }
+      if (data.tracker) { trackerEntries = data.tracker; DB.set('tracker', trackerEntries); }
       // Update header
       if (settings.logo) document.getElementById('headerLogo').src = settings.logo;
       document.querySelector('.header-text h1').textContent = settings.bizName || 'Macs Autos';
@@ -1880,6 +2378,8 @@ document.addEventListener('DOMContentLoaded', () => {
   loadSettings();
   renderLineItems();
   updateTotals();
+  // Check for due service notifications on load
+  setTimeout(scheduleNotifications, 2000);
 });
 
 // Register service worker
