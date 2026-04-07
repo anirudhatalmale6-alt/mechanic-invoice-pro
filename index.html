@@ -8,6 +8,7 @@
   <title>Macs Autos - Invoice</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     :root {
@@ -605,9 +606,124 @@
     @media (max-width: 600px) {
       .tracker-stats { grid-template-columns: 1fr; }
     }
+
+    /* Auth overlay */
+    .auth-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: linear-gradient(135deg, #1a1a1a 0%, #333 100%);
+      z-index: 500;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+    .auth-overlay.show { display: flex; }
+    .auth-box {
+      background: white;
+      border-radius: 16px;
+      max-width: 420px;
+      width: 100%;
+      padding: 40px 32px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+      text-align: center;
+    }
+    .auth-box .logo-area {
+      margin-bottom: 20px;
+    }
+    .auth-box .logo-area img {
+      width: 80px;
+      height: 80px;
+      border-radius: 12px;
+    }
+    .auth-box h2 {
+      font-size: 24px;
+      font-weight: 800;
+      color: var(--primary);
+      margin-bottom: 4px;
+    }
+    .auth-box .subtitle {
+      font-size: 13px;
+      color: var(--text-light);
+      margin-bottom: 24px;
+    }
+    .auth-box .form-group { text-align: left; }
+    .auth-box .btn-primary { width: 100%; margin-top: 8px; }
+    .auth-box .auth-toggle {
+      margin-top: 16px;
+      font-size: 13px;
+      color: var(--text-light);
+    }
+    .auth-box .auth-toggle a {
+      color: var(--red);
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+    }
+    .auth-box .auth-error {
+      background: #fff0f0;
+      color: #e74c3c;
+      padding: 10px;
+      border-radius: 8px;
+      font-size: 13px;
+      margin-bottom: 12px;
+      display: none;
+    }
+    .auth-box .cloud-badge {
+      display: inline-block;
+      background: var(--success);
+      color: white;
+      font-size: 10px;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    /* Loading spinner */
+    .auth-spinner {
+      display: none;
+      width: 28px;
+      height: 28px;
+      border: 3px solid #e0e0e0;
+      border-top-color: var(--red);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 12px auto;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
   </style>
 </head>
 <body>
+
+<!-- Auth Login Overlay (only shows in cloud mode) -->
+<div class="auth-overlay" id="authOverlay">
+  <div class="auth-box">
+    <div class="logo-area">
+      <img src="logo-small.png" alt="Macs Autos">
+    </div>
+    <span class="cloud-badge">CLOUD</span>
+    <h2 id="authTitle">Sign In</h2>
+    <div class="subtitle" id="authSubtitle">Access your invoices from any device</div>
+    <div class="auth-error" id="authError"></div>
+    <div class="auth-spinner" id="authSpinner"></div>
+    <div id="authForm">
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="authEmail" placeholder="your@email.com">
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="authPassword" placeholder="Min 6 characters">
+      </div>
+      <button class="btn btn-primary" id="authBtn" onclick="handleAuth()">Sign In</button>
+      <div class="auth-toggle">
+        <span id="authToggleText">Don't have an account?</span>
+        <a id="authToggleLink" onclick="toggleAuthMode()">Sign Up</a>
+      </div>
+    </div>
+  </div>
+</div>
 
 <div class="header">
   <div class="header-brand">
@@ -619,6 +735,7 @@
   </div>
   <div class="header-actions">
     <button class="header-btn" onclick="showSection('history')">&#128196; History</button>
+    <button class="header-btn" id="logoutBtn" onclick="handleLogout()" style="display:none">&#128682; Logout</button>
   </div>
 </div>
 
@@ -1033,31 +1150,206 @@
 </div>
 
 <script>
+// ========== SUPABASE CONFIG ==========
+// Leave empty to use localStorage (offline mode). Fill in to enable cloud sync.
+const SUPABASE_URL = '';
+const SUPABASE_ANON_KEY = '';
+const USE_CLOUD = !!(SUPABASE_URL && SUPABASE_ANON_KEY);
+
+let supabase = null;
+let currentUser = null;
+if (USE_CLOUD && window.supabase) {
+  supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+}
+
 // ========== DEFAULT LOGO ==========
 const DEFAULT_LOGO = 'logo-small.png';
 
-// ========== DATA STORE ==========
+// ========== DATA STORE (localStorage fallback + Supabase cloud) ==========
 const DB = {
-  get(key, def) {
+  // localStorage methods (always available)
+  getLocal(key, def) {
     try { const v = localStorage.getItem('mech_' + key); return v ? JSON.parse(v) : def; }
     catch { return def; }
   },
-  set(key, val) { localStorage.setItem('mech_' + key, JSON.stringify(val)); }
+  setLocal(key, val) { localStorage.setItem('mech_' + key, JSON.stringify(val)); },
+
+  // Unified get/set - uses localStorage for now, Supabase sync in background
+  get(key, def) { return this.getLocal(key, def); },
+  set(key, val) {
+    this.setLocal(key, val);
+    if (USE_CLOUD && currentUser) this.syncToCloud(key, val);
+  },
+
+  // Cloud sync methods
+  async syncToCloud(key, val) {
+    if (!supabase || !currentUser) return;
+    try {
+      if (key === 'settings') {
+        await supabase.from('settings').upsert({ user_id: currentUser.id, data: val }, { onConflict: 'user_id' });
+      } else if (key === 'services') {
+        await supabase.from('user_data').upsert({ user_id: currentUser.id, key: 'services', data: val }, { onConflict: 'user_id,key' });
+      } else if (key === 'invoices') {
+        await supabase.from('user_data').upsert({ user_id: currentUser.id, key: 'invoices', data: val }, { onConflict: 'user_id,key' });
+      } else if (key === 'tracker') {
+        await supabase.from('user_data').upsert({ user_id: currentUser.id, key: 'tracker', data: val }, { onConflict: 'user_id,key' });
+      }
+    } catch(e) { console.warn('Cloud sync failed:', e); }
+  },
+
+  async loadFromCloud() {
+    if (!supabase || !currentUser) return null;
+    try {
+      const [settingsRes, dataRes] = await Promise.all([
+        supabase.from('settings').select('data').eq('user_id', currentUser.id).single(),
+        supabase.from('user_data').select('key, data').eq('user_id', currentUser.id)
+      ]);
+
+      const result = {};
+      if (settingsRes.data) result.settings = settingsRes.data.data;
+
+      if (dataRes.data) {
+        dataRes.data.forEach(row => {
+          result[row.key] = row.data;
+        });
+      }
+      return result;
+    } catch(e) {
+      console.warn('Cloud load failed:', e);
+      return null;
+    }
+  },
+
+  async migrateLocalToCloud() {
+    if (!supabase || !currentUser) return;
+    const localSettings = this.getLocal('settings', null);
+    const localServices = this.getLocal('services', null);
+    const localInvoices = this.getLocal('invoices', null);
+    const localTracker = this.getLocal('tracker', null);
+
+    if (localSettings) await this.syncToCloud('settings', localSettings);
+    if (localServices) await this.syncToCloud('services', localServices);
+    if (localInvoices) await this.syncToCloud('invoices', localInvoices);
+    if (localTracker) await this.syncToCloud('tracker', localTracker);
+  }
 };
 
+// ========== AUTH ==========
+let authMode = 'login'; // 'login' or 'signup'
+
+function toggleAuthMode() {
+  authMode = authMode === 'login' ? 'signup' : 'login';
+  document.getElementById('authTitle').textContent = authMode === 'login' ? 'Sign In' : 'Create Account';
+  document.getElementById('authBtn').textContent = authMode === 'login' ? 'Sign In' : 'Create Account';
+  document.getElementById('authToggleText').textContent = authMode === 'login' ? "Don't have an account?" : 'Already have an account?';
+  document.getElementById('authToggleLink').textContent = authMode === 'login' ? 'Sign Up' : 'Sign In';
+  document.getElementById('authError').style.display = 'none';
+}
+
+function showAuthError(msg) {
+  const el = document.getElementById('authError');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+async function handleAuth() {
+  if (!supabase) return;
+  const email = document.getElementById('authEmail').value.trim();
+  const password = document.getElementById('authPassword').value;
+  if (!email || !password) { showAuthError('Enter email and password'); return; }
+  if (password.length < 6) { showAuthError('Password must be at least 6 characters'); return; }
+
+  document.getElementById('authError').style.display = 'none';
+  document.getElementById('authSpinner').style.display = 'block';
+  document.getElementById('authBtn').disabled = true;
+
+  try {
+    let result;
+    if (authMode === 'signup') {
+      result = await supabase.auth.signUp({ email, password });
+      if (result.error) throw result.error;
+      if (result.data.user && !result.data.session) {
+        showAuthError('Check your email for a confirmation link, then sign in.');
+        document.getElementById('authSpinner').style.display = 'none';
+        document.getElementById('authBtn').disabled = false;
+        return;
+      }
+    } else {
+      result = await supabase.auth.signInWithPassword({ email, password });
+      if (result.error) throw result.error;
+    }
+
+    currentUser = result.data.user;
+    await onAuthSuccess();
+  } catch(e) {
+    showAuthError(e.message || 'Authentication failed');
+  }
+  document.getElementById('authSpinner').style.display = 'none';
+  document.getElementById('authBtn').disabled = false;
+}
+
+async function onAuthSuccess() {
+  // Try to load data from cloud
+  const cloudData = await DB.loadFromCloud();
+
+  if (cloudData && (cloudData.settings || cloudData.invoices || cloudData.services)) {
+    // Cloud data exists - use it
+    if (cloudData.settings) { settings = cloudData.settings; DB.setLocal('settings', settings); }
+    if (cloudData.services) { services = cloudData.services; DB.setLocal('services', services); }
+    if (cloudData.invoices) { invoices = cloudData.invoices; DB.setLocal('invoices', invoices); }
+    if (cloudData.tracker) { trackerEntries = cloudData.tracker; DB.setLocal('tracker', trackerEntries); }
+  } else {
+    // No cloud data - migrate local data to cloud
+    const hasLocal = DB.getLocal('invoices', []).length > 0 || DB.getLocal('services', []).length > 0;
+    if (hasLocal) {
+      await DB.migrateLocalToCloud();
+    }
+  }
+
+  // Ensure quoPrefix/quoNextNum exist
+  if (!settings.quoPrefix) settings.quoPrefix = 'QUO-';
+  if (!settings.quoNextNum) settings.quoNextNum = 1001;
+
+  // Hide auth overlay, show app
+  document.getElementById('authOverlay').classList.remove('show');
+  document.getElementById('logoutBtn').style.display = 'inline-flex';
+  initApp();
+}
+
+async function handleLogout() {
+  if (!supabase) return;
+  await supabase.auth.signOut();
+  currentUser = null;
+  document.getElementById('logoutBtn').style.display = 'none';
+  document.getElementById('authOverlay').classList.add('show');
+  document.getElementById('authEmail').value = '';
+  document.getElementById('authPassword').value = '';
+  document.getElementById('authError').style.display = 'none';
+}
+
+async function checkExistingSession() {
+  if (!supabase) return false;
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session && session.user) {
+      currentUser = session.user;
+      await onAuthSuccess();
+      return true;
+    }
+  } catch(e) {}
+  return false;
+}
+
 // ========== STATE ==========
-let settings = DB.get('settings', {
+const DEFAULT_SETTINGS = {
   bizName: 'Macs Autos', bizPhone: '', bizEmail: '', bizAddress: '', bizABN: '',
   invPrefix: 'INV-', invNextNum: 1001, taxEnabled: false,
   quoPrefix: 'QUO-', quoNextNum: 1001,
   payTerms: 'Payment due within 14 days', currSymbol: '$', logo: null,
   warrantyText: 'Macs Autos warrants that all mechanical repairs performed and parts supplied as part of this service will be free from defects in materials and workmanship for a period of 6 months or 10,000 km (whichever occurs first) from the date of this invoice.',
   bankName: '', bankBSB: '', bankAccNum: '', bankAccName: ''
-});
-// Ensure quoPrefix/quoNextNum exist on older settings
-if (!settings.quoPrefix) settings.quoPrefix = 'QUO-';
-if (!settings.quoNextNum) settings.quoNextNum = 1001;
-let services = DB.get('services', [
+};
+const DEFAULT_SERVICES = [
   { type: 'Labor', name: 'Oil Change', price: 80 },
   { type: 'Labor', name: 'Brake Pad Replacement', price: 250 },
   { type: 'Labor', name: 'Tyre Rotation', price: 50 },
@@ -1067,12 +1359,17 @@ let services = DB.get('services', [
   { type: 'Part', name: 'Brake Pads (pair)', price: 85 },
   { type: 'Part', name: 'Air Filter', price: 25 },
   { type: 'Part', name: 'Spark Plugs (set of 4)', price: 40 },
-]);
+];
+
+let settings = DB.get('settings', DEFAULT_SETTINGS);
+if (!settings.quoPrefix) settings.quoPrefix = 'QUO-';
+if (!settings.quoNextNum) settings.quoNextNum = 1001;
+let services = DB.get('services', DEFAULT_SERVICES);
 let invoices = DB.get('invoices', []);
 let lineItemData = [];
-let editingInvoiceIdx = -1; // -1 = new invoice, >= 0 = editing existing
-let documentType = 'invoice'; // 'invoice' or 'quote'
-let historyFilter = 'all'; // 'all', 'invoice', 'quote', 'paid', 'unpaid'
+let editingInvoiceIdx = -1;
+let documentType = 'invoice';
+let historyFilter = 'all';
 let trackerEntries = DB.get('tracker', []);
 let trackerFilter = 'all';
 let editingTrackerIdx = -1;
@@ -2368,7 +2665,7 @@ function escHtml(str) {
 }
 
 // ========== INIT ==========
-document.addEventListener('DOMContentLoaded', () => {
+function initApp() {
   // Load custom logo into header if saved
   if (settings.logo) {
     document.getElementById('headerLogo').src = settings.logo;
@@ -2380,6 +2677,22 @@ document.addEventListener('DOMContentLoaded', () => {
   updateTotals();
   // Check for due service notifications on load
   setTimeout(scheduleNotifications, 2000);
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+  if (USE_CLOUD) {
+    // Cloud mode - check for existing session first
+    document.getElementById('authOverlay').classList.add('show');
+    const hasSession = await checkExistingSession();
+    if (!hasSession) {
+      // Show login screen - app stays hidden behind overlay
+      // Pre-init the app in background for smooth transition
+      initApp();
+    }
+  } else {
+    // Local mode - no auth needed
+    initApp();
+  }
 });
 
 // Register service worker
