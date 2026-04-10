@@ -607,6 +607,245 @@
       .tracker-stats { grid-template-columns: 1fr; }
     }
 
+    /* ========== INSPECTION FORM ========== */
+    .insp-toggle {
+      display: flex;
+      border-radius: 8px;
+      overflow: hidden;
+      border: 2px solid var(--border);
+      margin-bottom: 16px;
+    }
+    .insp-toggle button {
+      flex: 1;
+      padding: 10px 16px;
+      border: none;
+      background: var(--bg);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      color: var(--text-light);
+      transition: all 0.2s;
+    }
+    .insp-toggle button.active {
+      background: var(--red);
+      color: white;
+    }
+    .insp-section-header {
+      background: var(--primary);
+      color: white;
+      padding: 10px 14px;
+      font-size: 14px;
+      font-weight: 700;
+      border-radius: 6px 6px 0 0;
+      margin-top: 16px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .insp-section-header:first-child { margin-top: 0; }
+    .insp-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 2px;
+      table-layout: fixed;
+    }
+    .insp-table th {
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--text-light);
+      text-transform: uppercase;
+      padding: 6px 8px;
+      text-align: center;
+      border-bottom: 2px solid var(--border);
+      background: #fafafa;
+    }
+    .insp-table th:first-child { text-align: left; width: auto; }
+    .insp-table th.insp-col-ok,
+    .insp-table th.insp-col-ra { width: 44px; }
+    .insp-table td {
+      padding: 5px 8px;
+      font-size: 13px;
+      border-bottom: 1px solid #f0f0f0;
+      vertical-align: middle;
+    }
+    .insp-table tr:hover { background: #fafafa; }
+    .insp-table td:first-child {
+      font-weight: 500;
+      color: var(--text);
+      line-height: 1.3;
+    }
+    .insp-table td.insp-radio-cell {
+      text-align: center;
+      width: 44px;
+    }
+    .insp-radio {
+      appearance: none;
+      -webkit-appearance: none;
+      width: 22px;
+      height: 22px;
+      border: 2px solid var(--border);
+      border-radius: 50%;
+      cursor: pointer;
+      transition: all 0.15s;
+      position: relative;
+    }
+    .insp-radio:checked {
+      border-color: var(--success);
+      background: var(--success);
+    }
+    .insp-radio:checked::after {
+      content: '\2713';
+      color: white;
+      font-size: 13px;
+      font-weight: 700;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+    }
+    .insp-radio.ra:checked {
+      border-color: #e74c3c;
+      background: #e74c3c;
+    }
+    .insp-radio.ra:checked::after {
+      content: '!';
+    }
+    .insp-extra {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      margin-top: 4px;
+    }
+    .insp-extra label {
+      font-size: 11px;
+      color: var(--text-light);
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      background: #f5f5f5;
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+    .insp-extra input[type="checkbox"] {
+      width: 14px;
+      height: 14px;
+      accent-color: var(--red);
+    }
+    .insp-extra input[type="text"],
+    .insp-extra input[type="number"] {
+      width: 60px;
+      padding: 3px 5px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      font-size: 12px;
+      background: #fafafa;
+    }
+    .insp-extra input:focus {
+      outline: none;
+      border-color: var(--red);
+      background: white;
+    }
+    .insp-extra .insp-unit {
+      font-size: 11px;
+      color: var(--text-light);
+      font-weight: 600;
+    }
+    .insp-vehicle-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .insp-vehicle-grid .form-group { margin-bottom: 0; }
+    .insp-vehicle-grid .form-group input { padding: 8px 10px; font-size: 13px; }
+    .insp-vehicle-grid .form-group label { font-size: 11px; margin-bottom: 3px; }
+    @media (max-width: 480px) {
+      .insp-vehicle-grid { grid-template-columns: 1fr; }
+    }
+    .insp-specs-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    @media (max-width: 480px) { .insp-specs-grid { grid-template-columns: 1fr; } }
+    .insp-specs-grid .form-group { margin-bottom: 0; }
+    .insp-specs-grid .form-group input { padding: 8px 10px; font-size: 13px; }
+    .insp-specs-grid .form-group label { font-size: 11px; margin-bottom: 3px; }
+    .insp-brake-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+      margin-top: 8px;
+    }
+    .insp-brake-table th {
+      background: #f5f5f5;
+      padding: 6px 4px;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      border: 1px solid var(--border);
+      text-align: center;
+    }
+    .insp-brake-table td {
+      padding: 4px;
+      border: 1px solid var(--border);
+    }
+    .insp-brake-table td:first-child {
+      font-weight: 600;
+      font-size: 11px;
+      white-space: nowrap;
+      background: #fafafa;
+      padding: 4px 8px;
+    }
+    .insp-brake-table input {
+      width: 100%;
+      padding: 4px;
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      font-size: 12px;
+      text-align: center;
+    }
+    .insp-brake-table input:focus { outline: none; border-color: var(--red); }
+    .insp-tyre-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 4px;
+      margin-top: 4px;
+    }
+    .insp-tyre-grid label {
+      font-size: 10px;
+      color: var(--text-light);
+      text-align: center;
+      font-weight: 600;
+    }
+    .insp-tyre-grid input {
+      width: 100%;
+      padding: 4px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      font-size: 12px;
+      text-align: center;
+    }
+    .insp-tyre-grid input:focus { outline: none; border-color: var(--red); }
+    .insp-history-card {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 14px;
+      background: var(--card);
+      border-radius: var(--radius);
+      margin-bottom: 10px;
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--red);
+      cursor: pointer;
+      transition: box-shadow 0.2s;
+    }
+    .insp-history-card:hover { box-shadow: 0 3px 12px rgba(0,0,0,0.1); }
+    .insp-history-info { flex: 1; }
+    .insp-history-name { font-weight: 700; color: var(--primary); font-size: 15px; }
+    .insp-history-detail { color: var(--text-light); font-size: 13px; margin-top: 2px; }
+    .insp-history-stats { font-size: 12px; margin-top: 4px; }
+    .insp-history-stats .ok-count { color: var(--success); font-weight: 700; }
+    .insp-history-stats .ra-count { color: #e74c3c; font-weight: 700; }
+
     /* Auth overlay */
     .auth-overlay {
       display: none;
@@ -744,6 +983,7 @@
   <div class="tab" data-tab="services" onclick="showSection('services')">Services &amp; Parts</div>
   <div class="tab" data-tab="history" onclick="showSection('history')">History</div>
   <div class="tab" data-tab="tracker" onclick="showSection('tracker')">Tracker</div>
+  <div class="tab" data-tab="inspections" onclick="showSection('inspections')">Inspections</div>
   <div class="tab" data-tab="settings" onclick="showSection('settings')">Settings</div>
 </div>
 
@@ -1012,6 +1252,85 @@
     </div>
   </div>
 
+  <!-- ==================== INSPECTIONS ==================== -->
+  <div class="section" id="sec-inspections">
+    <div class="insp-toggle" id="inspToggle">
+      <button class="active" onclick="showInspView('form')">New Inspection</button>
+      <button onclick="showInspView('history')">Inspection History</button>
+    </div>
+
+    <div id="inspFormView">
+      <div class="card">
+        <div class="card-title"><span class="icon">&#128663;</span> Vehicle Information</div>
+        <div class="insp-vehicle-grid">
+          <div class="form-group"><label>Customer Name</label><input type="text" id="inspCustName"></div>
+          <div class="form-group"><label>Phone</label><input type="text" id="inspCustPhone"></div>
+          <div class="form-group"><label>Address</label><input type="text" id="inspCustAddr"></div>
+          <div class="form-group"><label>Email</label><input type="email" id="inspCustEmail"></div>
+          <div class="form-group"><label>Rego</label><input type="text" id="inspRego"></div>
+          <div class="form-group"><label>Make</label><input type="text" id="inspMake"></div>
+          <div class="form-group"><label>Model</label><input type="text" id="inspModel"></div>
+          <div class="form-group"><label>Build Year</label><input type="text" id="inspBuildYear"></div>
+          <div class="form-group"><label>VIN</label><input type="text" id="inspVIN"></div>
+          <div class="form-group"><label>Build Month</label><input type="text" id="inspBuildMonth"></div>
+          <div class="form-group"><label>Rego Expiry</label><input type="date" id="inspRegoExp"></div>
+          <div class="form-group"><label>Odometer (km)</label><input type="number" id="inspOdometer"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><span class="icon">&#128295;</span> Vehicle Specs</div>
+        <div class="insp-specs-grid">
+          <div class="form-group"><label>Engine Oil</label><input type="text" id="specEngineOil"></div>
+          <div class="form-group"><label>Trans Oil</label><input type="text" id="specTransOil"></div>
+          <div class="form-group"><label>Oil Filter</label><input type="text" id="specOilFilter"></div>
+          <div class="form-group"><label>Air Cleaner</label><input type="text" id="specAirCleaner"></div>
+          <div class="form-group"><label>Pollen Filter</label><input type="text" id="specPollenFilter"></div>
+          <div class="form-group"><label>Spark Plugs</label><input type="text" id="specSparkPlugs"></div>
+          <div class="form-group"><label>AC Gas Qty</label><input type="text" id="specACGas"></div>
+          <div class="form-group"><label>Fuel Filter</label><input type="text" id="specFuelFilter"></div>
+        </div>
+      </div>
+
+      <div class="card" style="padding:0;overflow:hidden;">
+        <div id="inspChecklistContainer"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><span class="icon">&#128221;</span> Notes</div>
+        <textarea id="inspNotes" rows="3" placeholder="Additional notes, recommendations, follow-up items..." style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:13px;resize:vertical;background:#fafafa;"></textarea>
+      </div>
+
+      <div class="card">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Technician</label>
+            <input type="text" id="inspTechnician" placeholder="Technician name">
+          </div>
+          <div class="form-group">
+            <label>Date / Time</label>
+            <input type="text" id="inspDateTime" readonly style="background:#f0f0f0;">
+          </div>
+        </div>
+      </div>
+
+      <div class="actions-bar" style="margin-bottom:10px;">
+        <button class="btn btn-primary btn-block" onclick="saveInspection()">&#128190; Save Inspection</button>
+      </div>
+      <div class="actions-bar" style="margin-bottom:20px;">
+        <button class="btn btn-outline btn-block" onclick="clearInspectionForm()">&#128465; Clear Form</button>
+      </div>
+    </div>
+
+    <div id="inspHistoryView" style="display:none;">
+      <div id="inspHistoryList"></div>
+      <div class="empty-state" id="inspHistoryEmpty">
+        <div class="icon">&#128269;</div>
+        <p>No inspections yet. Create your first one!</p>
+      </div>
+    </div>
+  </div>
+
   <!-- ==================== SETTINGS ==================== -->
   <div class="section" id="sec-settings">
     <div class="card">
@@ -1193,6 +1512,8 @@ const DB = {
         await sbClient.from('user_data').upsert({ user_id: currentUser.id, key: 'invoices', data: val }, { onConflict: 'user_id,key' });
       } else if (key === 'tracker') {
         await sbClient.from('user_data').upsert({ user_id: currentUser.id, key: 'tracker', data: val }, { onConflict: 'user_id,key' });
+      } else if (key === 'inspections') {
+        await sbClient.from('user_data').upsert({ user_id: currentUser.id, key: 'inspections', data: val }, { onConflict: 'user_id,key' });
       }
     } catch(e) { console.warn('Cloud sync failed:', e); }
   },
@@ -1298,6 +1619,7 @@ async function onAuthSuccess() {
     if (cloudData.services) { services = cloudData.services; DB.setLocal('services', services); }
     if (cloudData.invoices) { invoices = cloudData.invoices; DB.setLocal('invoices', invoices); }
     if (cloudData.tracker) { trackerEntries = cloudData.tracker; DB.setLocal('tracker', trackerEntries); }
+    if (cloudData.inspections) { inspections = cloudData.inspections; DB.setLocal('inspections', inspections); }
   } else {
     // No cloud data - migrate local data to cloud
     const hasLocal = DB.getLocal('invoices', []).length > 0 || DB.getLocal('services', []).length > 0;
@@ -1383,6 +1705,7 @@ function showSection(name) {
   if (name === 'services') renderServices();
   if (name === 'history') renderHistory();
   if (name === 'tracker') renderTracker();
+  if (name === 'inspections') { renderInspections(); renderInspectionHistory(); }
   if (name === 'settings') loadSettings();
 }
 
@@ -2617,6 +2940,7 @@ function exportData() {
     services: services,
     invoices: invoices,
     tracker: trackerEntries,
+    inspections: inspections,
     exportDate: new Date().toISOString()
   };
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -2643,6 +2967,7 @@ function importData(e) {
       if (data.services) { services = data.services; DB.set('services', services); }
       if (data.invoices) { invoices = data.invoices; DB.set('invoices', invoices); }
       if (data.tracker) { trackerEntries = data.tracker; DB.set('tracker', trackerEntries); }
+      if (data.inspections) { inspections = data.inspections; DB.set('inspections', inspections); }
       // Update header
       if (settings.logo) document.getElementById('headerLogo').src = settings.logo;
       document.querySelector('.header-text h1').textContent = settings.bizName || 'Macs Autos';
@@ -2662,6 +2987,433 @@ function escHtml(str) {
   const d = document.createElement('div');
   d.textContent = str || '';
   return d.innerHTML;
+}
+
+// ========== INSPECTIONS ==========
+let inspections = DB.get('inspections', []);
+let editingInspectionIdx = -1;
+
+const INSP_SECTIONS = [
+  { title: '1. Road Test', items: [
+    { id: 'rt1', label: 'Fit Seat Cover and Floor Mat' },
+    { id: 'rt2', label: 'Check Oil, Coolant and Tyre Condition Prior To Road Test' },
+    { id: 'rt3', label: 'Obvious Vehicle Damage' },
+    { id: 'rt4', label: 'Dash Cam Disconnected', extra: 'checkboxes', opts: ['By Owner','By Tech','N/A'] },
+    { id: 'rt5', label: 'Road Test - Max Speed Reached', extra: 'input', unit: 'kph' },
+    { id: 'rt6', label: 'Air Conditioning / Climate / Heater Controls' },
+    { id: 'rt7', label: 'Air Conditioning Temperature Check (6-9 Degrees)' },
+    { id: 'rt8', label: 'Hand Brake General Operation / Warning Lights' },
+    { id: 'rt9', label: 'Foot Brake General Operation' },
+    { id: 'rt10', label: 'Clutch - Gearbox Operation' },
+    { id: 'rt11', label: 'Automatic Transmission Operation' },
+    { id: 'rt12', label: 'Starter Inhibitor Switch' },
+    { id: 'rt13', label: 'Requires Injector Service' }
+  ]},
+  { title: '2. Lights Check', items: [
+    { id: 'lc1', label: 'Head Light Operation', extra: 'checkboxes', opts: ['HI L','HI R','Lo L','Lo R'] },
+    { id: 'lc2', label: 'High Beam Indicator' },
+    { id: 'lc3', label: 'Park / Tail Lights', extra: 'checkboxes', opts: ['FL','FR','RL','RR'] },
+    { id: 'lc4', label: 'Turn Signals / Flashing Rate' },
+    { id: 'lc5', label: 'Signal Cancellation' },
+    { id: 'lc6', label: 'Brake Lights' },
+    { id: 'lc7', label: 'License Plate Lights' },
+    { id: 'lc8', label: 'Reverse Lights' },
+    { id: 'lc9', label: 'All Lenses / Condition' }
+  ]},
+  { title: '3. Interior Checks', items: [
+    { id: 'ic1', label: 'Instrument Warning Lights' },
+    { id: 'ic2', label: 'Engine Check Lights' },
+    { id: 'ic3', label: 'Instrument Panel Lights' },
+    { id: 'ic4', label: 'Interior Lights / Courtesy Lights' },
+    { id: 'ic5', label: 'Windscreen Wiper Blades', extra: 'checkboxes', opts: ['L','R','Rear'] },
+    { id: 'ic6', label: 'Wind Screen Condition And Visibility' },
+    { id: 'ic7', label: 'Mirrors - Internal / External' },
+    { id: 'ic8', label: 'Horn Operation' },
+    { id: 'ic9', label: 'Seat Belts', extra: 'checkboxes', opts: ['FL','FR','RL','CR','RR'] },
+    { id: 'ic10', label: 'Lubricate Doors / Locks / Handles / Check Straps / Hinges / Bonnet Latch' },
+    { id: 'ic11', label: 'Window Operation', extra: 'checkboxes', opts: ['FL','FR','RL','RR'] },
+    { id: 'ic12', label: 'Boot Or Tail Gate Operation' },
+    { id: 'ic13', label: 'Pollen Filter Replacement' }
+  ]},
+  { title: '4. Under Bonnet', items: [
+    { id: 'ub1', label: 'Replace Engine Oil' },
+    { id: 'ub2', label: 'Battery Load Test', extra: 'checkboxes', opts: ['Electrolyte','Clamp','Terminals','Cables'] },
+    { id: 'ub3', label: 'Air Cleaner' },
+    { id: 'ub4', label: 'Belts' },
+    { id: 'ub5', label: 'Cambelt', extra: 'dual-input', fields: [{key:'km',unit:'km',type:'number'},{key:'date',unit:'Date',type:'date'}] },
+    { id: 'ub6', label: 'Coolant Condition' },
+    { id: 'ub7', label: 'Pressurise Cooling System' },
+    { id: 'ub8', label: 'Conduct External Visual Check Of Components' },
+    { id: 'ub9', label: 'Audible Check of Components for Abnormal Noises' },
+    { id: 'ub10', label: 'Power Steering / Hydraulic Or Electric Fluid and Condition' },
+    { id: 'ub11', label: 'Spark Plugs Condition' },
+    { id: 'ub12', label: 'Induction System Condition' },
+    { id: 'ub13', label: 'Brake/Clutch Fluid Level and Condition / Top Up' },
+    { id: 'ub14', label: 'Windscreen Washers - Operation / Top Up / Additive Added' },
+    { id: 'ub15', label: 'Fuel Filter - Visual Only' },
+    { id: 'ub16', label: 'Bonnet / Boot Latch Operation' }
+  ]},
+  { title: '5. Under Body', items: [
+    { id: 'ubd1', label: 'Drain Oil and Replace Sump Plug/Washer' },
+    { id: 'ubd2', label: 'Replace Oil Filter' },
+    { id: 'ubd3', label: 'Engine Oil Leaks' },
+    { id: 'ubd4', label: 'Gear Box / Transmission Oil Level and Condition' },
+    { id: 'ubd5', label: 'Driveline Oil Level and Condition' },
+    { id: 'ubd6', label: 'Lubricate Suspension - Where Applicable' },
+    { id: 'ubd7', label: 'Fuel Line / Leaks / Attachments' },
+    { id: 'ubd8', label: 'Brake Cable / Hoses / Lines' },
+    { id: 'ubd9', label: 'Engine Mountings', extra: 'checkboxes', opts: ['Gearbox','Front','Rear'] }
+  ]},
+  { title: '6. Exhaust System Checks', items: [
+    { id: 'ex1', label: 'Exhaust Engine Pipe / Flange' },
+    { id: 'ex2', label: 'Muffler / Resonators / Pipes' },
+    { id: 'ex3', label: 'Catalytic Converter - Visual' },
+    { id: 'ex4', label: 'Particulate Filter - Visual' },
+    { id: 'ex5', label: 'Support / Hangers' }
+  ]},
+  { title: '7. Suspension / Steering System Checks', items: [
+    { id: 'ss1', label: 'Steering Free Play' },
+    { id: 'ss2', label: 'Steering Wear / Leaks / Rack Boots' },
+    { id: 'ss3', label: 'Tie Rod Ends' },
+    { id: 'ss4', label: 'Front Suspension Bushes' },
+    { id: 'ss5', label: 'Rear Suspension Bushes' },
+    { id: 'ss6', label: 'Upper and Lower Wishbones' },
+    { id: 'ss7', label: 'Sway Bar Rubbers', extra: 'checkboxes', opts: ['Front','Rear'] },
+    { id: 'ss8', label: 'Ball Joints' },
+    { id: 'ss9', label: 'Shock Absorbers', extra: 'checkboxes', opts: ['FL','FR','RL','RR'] },
+    { id: 'ss10', label: 'Tail Shaft / Joints' },
+    { id: 'ss11', label: 'Constant Velocity Joints', extra: 'checkboxes', opts: ['FL','FR','RL','RR'] }
+  ]},
+  { title: '8. Brake System Test', items: [
+    { id: 'bs1', label: 'Tyre Pressure', extra: 'tyre-inputs', fields: ['FL','FR','RL','RR','Sp'] },
+    { id: 'bs2', label: 'Tyre Condition', extra: 'tyre-inputs', fields: ['FL','FR','RL','RR','Sp'] },
+    { id: 'bs3', label: 'Tyre Tread Depth (mm)', extra: 'tyre-inputs', fields: ['FL','FR','RL','RR','Sp'] },
+    { id: 'bs4', label: 'Wheel Bearings', extra: 'tyre-inputs', fields: ['FL','FR','RL','RR'] },
+    { id: 'bs5', label: 'Master Cylinder and Booster' },
+    { id: 'bs6', label: 'Brakes', extra: 'brake-table' }
+  ]},
+  { title: '9. Final Procedures', items: [
+    { id: 'fp1', label: 'Wheel Nuts Torqued to Manufacturers Specification', extra: 'input', unit: 'Nm' },
+    { id: 'fp2', label: 'Road Test Car (If Roadworthy) - Max Speed', extra: 'input', unit: 'kph' },
+    { id: 'fp3', label: 'Check Oil Filter for Leaks' },
+    { id: 'fp4', label: 'Reset Service Interval' },
+    { id: 'fp5', label: 'Gloss Tyres' },
+    { id: 'fp6', label: 'Vacuum Carpets Front and Rear' },
+    { id: 'fp7', label: 'Deodorise Interior' },
+    { id: 'fp8', label: 'Wipe Over Dash' },
+    { id: 'fp9', label: 'Clean Windows' },
+    { id: 'fp10', label: 'Pledge and Lube Stickers' },
+    { id: 'fp11', label: 'Park Vehicle - Facing Out' },
+    { id: 'fp12', label: 'Remove Seat Cover and Floor Mat' }
+  ]}
+];
+
+const BRAKE_ROWS = ['LH Front','RH Front','LH Rear','RH Rear'];
+const BRAKE_COLS = ['Spec','Disc/Drum Size','Lining %','Caliper/Cyl','Seal'];
+
+function renderInspections() {
+  const container = document.getElementById('inspChecklistContainer');
+  if (!container || container.children.length > 0) return; // only render once
+
+  const now = new Date();
+  document.getElementById('inspDateTime').value = now.toLocaleDateString('en-AU') + ' ' + now.toLocaleTimeString('en-AU', {hour:'2-digit',minute:'2-digit'});
+
+  let html = '';
+  INSP_SECTIONS.forEach(section => {
+    html += '<div class="insp-section-header">' + section.title + '</div>';
+    html += '<table class="insp-table"><thead><tr><th>Item</th><th class="insp-col-ok">OK</th><th class="insp-col-ra">R/A</th></tr></thead><tbody>';
+    section.items.forEach(item => {
+      html += '<tr><td><div>' + item.label + '</div>' + renderInspExtra(item) + '</td>';
+      if (item.extra === 'brake-table') {
+        html += '<td colspan="2" style="padding:0;">' + renderBrakeTable(item.id) + '</td>';
+      } else {
+        html += '<td class="insp-radio-cell"><input type="radio" class="insp-radio" name="insp_' + item.id + '" value="ok"></td>';
+        html += '<td class="insp-radio-cell"><input type="radio" class="insp-radio ra" name="insp_' + item.id + '" value="ra"></td>';
+      }
+      html += '</tr>';
+    });
+    html += '</tbody></table>';
+  });
+  container.innerHTML = html;
+}
+
+function renderInspExtra(item) {
+  if (!item.extra) return '';
+  let h = '<div class="insp-extra">';
+  if (item.extra === 'checkboxes') {
+    item.opts.forEach(opt => {
+      const cbId = 'insp_cb_' + item.id + '_' + opt.replace(/[\s\/]/g,'');
+      h += '<label><input type="checkbox" id="' + cbId + '"> ' + opt + '</label>';
+    });
+  } else if (item.extra === 'input') {
+    h += '<input type="number" id="insp_val_' + item.id + '" placeholder="..."> <span class="insp-unit">' + item.unit + '</span>';
+  } else if (item.extra === 'dual-input') {
+    item.fields.forEach(f => {
+      h += '<input type="' + f.type + '" id="insp_val_' + item.id + '_' + f.key + '" placeholder="' + f.unit + '" style="width:' + (f.type === 'date' ? '120px' : '70px') + ';">';
+      if (f.type !== 'date') h += ' <span class="insp-unit">' + f.unit + '</span>';
+    });
+  } else if (item.extra === 'tyre-inputs') {
+    h += '</div><div class="insp-tyre-grid">';
+    item.fields.forEach(f => {
+      h += '<div><label>' + f + '</label><input type="text" id="insp_tyre_' + item.id + '_' + f + '" placeholder="-"></div>';
+    });
+    return h + '</div>';
+  }
+  return h + '</div>';
+}
+
+function renderBrakeTable(itemId) {
+  let h = '<table class="insp-brake-table"><thead><tr><th></th>';
+  BRAKE_COLS.forEach(c => { h += '<th>' + c + '</th>'; });
+  h += '</tr></thead><tbody>';
+  BRAKE_ROWS.forEach(r => {
+    const rk = r.replace(/\s/g,'');
+    h += '<tr><td>' + r + '</td>';
+    BRAKE_COLS.forEach(c => {
+      const ck = c.replace(/[\s\/%]/g,'');
+      h += '<td><input type="text" id="insp_brk_' + itemId + '_' + rk + '_' + ck + '" placeholder="-"></td>';
+    });
+    h += '</tr>';
+  });
+  return h + '</tbody></table>';
+}
+
+function showInspView(view) {
+  const btns = document.querySelectorAll('#inspToggle button');
+  btns.forEach(b => b.classList.remove('active'));
+  if (view === 'form') {
+    btns[0].classList.add('active');
+    document.getElementById('inspFormView').style.display = 'block';
+    document.getElementById('inspHistoryView').style.display = 'none';
+  } else {
+    btns[1].classList.add('active');
+    document.getElementById('inspFormView').style.display = 'none';
+    document.getElementById('inspHistoryView').style.display = 'block';
+    renderInspectionHistory();
+  }
+}
+
+function collectInspectionData() {
+  const data = {};
+  data.customer = {
+    name: document.getElementById('inspCustName').value,
+    phone: document.getElementById('inspCustPhone').value,
+    address: document.getElementById('inspCustAddr').value,
+    email: document.getElementById('inspCustEmail').value
+  };
+  data.vehicle = {
+    rego: document.getElementById('inspRego').value,
+    make: document.getElementById('inspMake').value,
+    model: document.getElementById('inspModel').value,
+    buildYear: document.getElementById('inspBuildYear').value,
+    vin: document.getElementById('inspVIN').value,
+    buildMonth: document.getElementById('inspBuildMonth').value,
+    regoExp: document.getElementById('inspRegoExp').value,
+    odometer: document.getElementById('inspOdometer').value
+  };
+  data.specs = {
+    engineOil: document.getElementById('specEngineOil').value,
+    transOil: document.getElementById('specTransOil').value,
+    oilFilter: document.getElementById('specOilFilter').value,
+    airCleaner: document.getElementById('specAirCleaner').value,
+    pollenFilter: document.getElementById('specPollenFilter').value,
+    sparkPlugs: document.getElementById('specSparkPlugs').value,
+    acGas: document.getElementById('specACGas').value,
+    fuelFilter: document.getElementById('specFuelFilter').value
+  };
+  data.checks = {};
+  INSP_SECTIONS.forEach(section => {
+    section.items.forEach(item => {
+      const entry = {};
+      const radio = document.querySelector('input[name="insp_' + item.id + '"]:checked');
+      entry.status = radio ? radio.value : '';
+      if (item.extra === 'checkboxes') {
+        entry.opts = {};
+        item.opts.forEach(opt => {
+          const cb = document.getElementById('insp_cb_' + item.id + '_' + opt.replace(/[\s\/]/g,''));
+          if (cb) entry.opts[opt] = cb.checked;
+        });
+      } else if (item.extra === 'input') {
+        const inp = document.getElementById('insp_val_' + item.id);
+        if (inp) entry.value = inp.value;
+      } else if (item.extra === 'dual-input') {
+        entry.values = {};
+        item.fields.forEach(f => {
+          const inp = document.getElementById('insp_val_' + item.id + '_' + f.key);
+          if (inp) entry.values[f.key] = inp.value;
+        });
+      } else if (item.extra === 'tyre-inputs') {
+        entry.tyres = {};
+        item.fields.forEach(f => {
+          const inp = document.getElementById('insp_tyre_' + item.id + '_' + f);
+          if (inp) entry.tyres[f] = inp.value;
+        });
+      } else if (item.extra === 'brake-table') {
+        entry.brakes = {};
+        BRAKE_ROWS.forEach(r => {
+          const rk = r.replace(/\s/g,'');
+          entry.brakes[rk] = {};
+          BRAKE_COLS.forEach(c => {
+            const ck = c.replace(/[\s\/%]/g,'');
+            const inp = document.getElementById('insp_brk_' + item.id + '_' + rk + '_' + ck);
+            if (inp) entry.brakes[rk][ck] = inp.value;
+          });
+        });
+      }
+      data.checks[item.id] = entry;
+    });
+  });
+  data.notes = document.getElementById('inspNotes').value;
+  data.technician = document.getElementById('inspTechnician').value;
+  data.dateTime = document.getElementById('inspDateTime').value;
+  data.savedAt = new Date().toISOString();
+  return data;
+}
+
+function saveInspection() {
+  const data = collectInspectionData();
+  if (!data.customer.name && !data.vehicle.rego) { toast('Enter customer name or rego'); return; }
+  if (editingInspectionIdx >= 0) {
+    data.savedAt = inspections[editingInspectionIdx].savedAt;
+    data.updatedAt = new Date().toISOString();
+    inspections[editingInspectionIdx] = data;
+    toast('Inspection updated!');
+  } else {
+    inspections.unshift(data);
+    toast('Inspection saved!');
+  }
+  DB.set('inspections', inspections);
+  editingInspectionIdx = -1;
+  clearInspectionForm();
+  showInspView('history');
+}
+
+function loadInspection(i) {
+  const data = inspections[i];
+  if (!data) return;
+  editingInspectionIdx = i;
+  showInspView('form');
+  document.getElementById('inspCustName').value = data.customer.name || '';
+  document.getElementById('inspCustPhone').value = data.customer.phone || '';
+  document.getElementById('inspCustAddr').value = data.customer.address || '';
+  document.getElementById('inspCustEmail').value = data.customer.email || '';
+  document.getElementById('inspRego').value = data.vehicle.rego || '';
+  document.getElementById('inspMake').value = data.vehicle.make || '';
+  document.getElementById('inspModel').value = data.vehicle.model || '';
+  document.getElementById('inspBuildYear').value = data.vehicle.buildYear || '';
+  document.getElementById('inspVIN').value = data.vehicle.vin || '';
+  document.getElementById('inspBuildMonth').value = data.vehicle.buildMonth || '';
+  document.getElementById('inspRegoExp').value = data.vehicle.regoExp || '';
+  document.getElementById('inspOdometer').value = data.vehicle.odometer || '';
+  if (data.specs) {
+    document.getElementById('specEngineOil').value = data.specs.engineOil || '';
+    document.getElementById('specTransOil').value = data.specs.transOil || '';
+    document.getElementById('specOilFilter').value = data.specs.oilFilter || '';
+    document.getElementById('specAirCleaner').value = data.specs.airCleaner || '';
+    document.getElementById('specPollenFilter').value = data.specs.pollenFilter || '';
+    document.getElementById('specSparkPlugs').value = data.specs.sparkPlugs || '';
+    document.getElementById('specACGas').value = data.specs.acGas || '';
+    document.getElementById('specFuelFilter').value = data.specs.fuelFilter || '';
+  }
+  if (data.checks) {
+    INSP_SECTIONS.forEach(section => {
+      section.items.forEach(item => {
+        const entry = data.checks[item.id];
+        if (!entry) return;
+        if (entry.status) {
+          const radio = document.querySelector('input[name="insp_' + item.id + '"][value="' + entry.status + '"]');
+          if (radio) radio.checked = true;
+        }
+        if (item.extra === 'checkboxes' && entry.opts) {
+          item.opts.forEach(opt => {
+            const cb = document.getElementById('insp_cb_' + item.id + '_' + opt.replace(/[\s\/]/g,''));
+            if (cb) cb.checked = !!entry.opts[opt];
+          });
+        } else if (item.extra === 'input' && entry.value !== undefined) {
+          const inp = document.getElementById('insp_val_' + item.id);
+          if (inp) inp.value = entry.value;
+        } else if (item.extra === 'dual-input' && entry.values) {
+          item.fields.forEach(f => {
+            const inp = document.getElementById('insp_val_' + item.id + '_' + f.key);
+            if (inp) inp.value = entry.values[f.key] || '';
+          });
+        } else if (item.extra === 'tyre-inputs' && entry.tyres) {
+          item.fields.forEach(f => {
+            const inp = document.getElementById('insp_tyre_' + item.id + '_' + f);
+            if (inp) inp.value = entry.tyres[f] || '';
+          });
+        } else if (item.extra === 'brake-table' && entry.brakes) {
+          BRAKE_ROWS.forEach(r => {
+            const rk = r.replace(/\s/g,'');
+            if (!entry.brakes[rk]) return;
+            BRAKE_COLS.forEach(c => {
+              const ck = c.replace(/[\s\/%]/g,'');
+              const inp = document.getElementById('insp_brk_' + item.id + '_' + rk + '_' + ck);
+              if (inp) inp.value = entry.brakes[rk][ck] || '';
+            });
+          });
+        }
+      });
+    });
+  }
+  if (data.notes) document.getElementById('inspNotes').value = data.notes;
+  if (data.technician) document.getElementById('inspTechnician').value = data.technician;
+  document.getElementById('inspDateTime').value = data.dateTime || '';
+  toast('Editing inspection for ' + (data.customer.name || data.vehicle.rego));
+}
+
+function deleteInspection(i) {
+  const insp = inspections[i];
+  const label = insp.customer.name || insp.vehicle.rego || 'Inspection';
+  if (confirm('Delete inspection for ' + label + '?')) {
+    inspections.splice(i, 1);
+    DB.set('inspections', inspections);
+    renderInspectionHistory();
+    toast('Inspection deleted');
+  }
+}
+
+function renderInspectionHistory() {
+  const list = document.getElementById('inspHistoryList');
+  const empty = document.getElementById('inspHistoryEmpty');
+  if (inspections.length === 0) { list.innerHTML = ''; empty.style.display = 'block'; return; }
+  empty.style.display = 'none';
+  let html = '';
+  inspections.forEach((insp, i) => {
+    let okCount = 0, raCount = 0;
+    if (insp.checks) {
+      Object.values(insp.checks).forEach(c => {
+        if (c.status === 'ok') okCount++;
+        else if (c.status === 'ra') raCount++;
+      });
+    }
+    const name = insp.customer.name || 'Unknown';
+    const vehicle = [insp.vehicle.make, insp.vehicle.model, insp.vehicle.rego].filter(Boolean).join(' ') || 'No vehicle info';
+    const date = insp.dateTime || new Date(insp.savedAt).toLocaleDateString('en-AU');
+    html += '<div class="insp-history-card" onclick="loadInspection(' + i + ')">';
+    html += '<div class="insp-history-info">';
+    html += '<div class="insp-history-name">' + escHtml(name) + '</div>';
+    html += '<div class="insp-history-detail">' + escHtml(vehicle) + ' &mdash; ' + date + '</div>';
+    html += '<div class="insp-history-stats"><span class="ok-count">' + okCount + ' OK</span> &nbsp; <span class="ra-count">' + raCount + ' R/A</span></div>';
+    html += '</div>';
+    html += '<div style="display:flex;gap:4px">';
+    html += '<button class="btn btn-danger btn-sm" onclick="event.stopPropagation();deleteInspection(' + i + ')">Del</button>';
+    html += '</div></div>';
+  });
+  list.innerHTML = html;
+}
+
+function clearInspectionForm() {
+  editingInspectionIdx = -1;
+  ['inspCustName','inspCustPhone','inspCustAddr','inspCustEmail','inspRego','inspMake','inspModel','inspBuildYear','inspVIN','inspBuildMonth','inspRegoExp','inspOdometer'].forEach(id => { document.getElementById(id).value = ''; });
+  ['specEngineOil','specTransOil','specOilFilter','specAirCleaner','specPollenFilter','specSparkPlugs','specACGas','specFuelFilter'].forEach(id => { document.getElementById(id).value = ''; });
+  document.querySelectorAll('#inspChecklistContainer input[type="radio"]').forEach(r => r.checked = false);
+  document.querySelectorAll('#inspChecklistContainer input[type="checkbox"]').forEach(c => c.checked = false);
+  document.querySelectorAll('#inspChecklistContainer input[type="text"], #inspChecklistContainer input[type="number"], #inspChecklistContainer input[type="date"]').forEach(i => i.value = '');
+  document.getElementById('inspNotes').value = '';
+  document.getElementById('inspTechnician').value = '';
+  const now = new Date();
+  document.getElementById('inspDateTime').value = now.toLocaleDateString('en-AU') + ' ' + now.toLocaleTimeString('en-AU', {hour:'2-digit',minute:'2-digit'});
 }
 
 // ========== INIT ==========
