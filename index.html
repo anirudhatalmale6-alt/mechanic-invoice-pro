@@ -1317,6 +1317,9 @@
       <div class="actions-bar" style="margin-bottom:10px;">
         <button class="btn btn-primary btn-block" onclick="saveInspection()">&#128190; Save Inspection</button>
       </div>
+      <div class="actions-bar" style="margin-bottom:10px;">
+        <button class="btn btn-block" style="background:#1a6b1a;color:#fff;border:none;padding:12px;border-radius:8px;font-size:15px;cursor:pointer" onclick="generateInspectionPDF()">&#128196; Generate PDF Report</button>
+      </div>
       <div class="actions-bar" style="margin-bottom:20px;">
         <button class="btn btn-outline btn-block" onclick="clearInspectionForm()">&#128465; Clear Form</button>
       </div>
@@ -1431,6 +1434,27 @@
 
     <button class="btn btn-primary btn-block" onclick="saveSettings()">&#128190; Save Settings</button>
 
+    <div class="card" style="margin-top:16px" id="staffManagement">
+      <div class="card-title"><span class="icon">&#128101;</span> Staff Management</div>
+      <p style="font-size:13px;color:var(--text-light);margin-bottom:14px;">
+        Create staff accounts with limited access. Staff can ONLY do inspections, view the service tracker, and view customer data. They cannot access invoices, quotes, or settings.
+      </p>
+      <div class="form-row">
+        <div class="form-group">
+          <label>STAFF EMAIL</label>
+          <input type="email" id="staffEmail" placeholder="staff@example.com">
+        </div>
+        <div class="form-group">
+          <label>PASSWORD</label>
+          <input type="password" id="staffPassword" placeholder="Min 6 characters">
+        </div>
+      </div>
+      <button class="btn btn-primary" onclick="createStaffAccountAndTrack()" style="margin-bottom:10px">&#128100; Create Staff Account</button>
+      <div id="staffError" style="display:none;color:#cc0000;font-size:13px;margin-top:6px;"></div>
+      <div id="staffSuccess" style="display:none;color:#1a6b1a;font-size:13px;margin-top:6px;"></div>
+      <div id="staffList" style="margin-top:10px;"></div>
+    </div>
+
     <div class="card" style="margin-top:16px">
       <div class="card-title"><span class="icon">&#128230;</span> Backup &amp; Restore</div>
       <p style="font-size:13px;color:var(--text-light);margin-bottom:14px;">
@@ -1477,6 +1501,7 @@ const USE_CLOUD = !!(SUPABASE_URL && SUPABASE_ANON_KEY);
 
 let sbClient = null;
 let currentUser = null;
+let currentUserRole = 'admin'; // 'admin' or 'staff'
 if (USE_CLOUD && window.supabase) {
   sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 }
@@ -1610,6 +1635,10 @@ async function handleAuth() {
 }
 
 async function onAuthSuccess() {
+  // Determine user role from metadata
+  currentUserRole = (currentUser.user_metadata && currentUser.user_metadata.role) || 'admin';
+  applyRoleRestrictions();
+
   // Try to load data from cloud
   const cloudData = await DB.loadFromCloud();
 
@@ -1642,8 +1671,11 @@ async function handleLogout() {
   if (!sbClient) return;
   await sbClient.auth.signOut();
   currentUser = null;
+  currentUserRole = 'admin';
   document.getElementById('logoutBtn').style.display = 'none';
   document.getElementById('authOverlay').classList.add('show');
+  // Reset tab visibility
+  document.querySelectorAll('.tab').forEach(t => t.style.display = '');
   document.getElementById('authEmail').value = '';
   document.getElementById('authPassword').value = '';
   document.getElementById('authError').style.display = 'none';
@@ -1660,6 +1692,87 @@ async function checkExistingSession() {
     }
   } catch(e) {}
   return false;
+}
+
+// ========== ROLE-BASED ACCESS ==========
+function applyRoleRestrictions() {
+  const isStaff = currentUserRole === 'staff';
+  // Staff-only tabs: Inspections, Tracker (+ a Customers read-only view)
+  // Admin tabs: New Invoice, Services & Parts, History, Tracker, Inspections, Settings
+  const staffHiddenTabs = ['invoice', 'services', 'history', 'settings'];
+  document.querySelectorAll('.tab').forEach(tab => {
+    const tabName = tab.getAttribute('data-tab');
+    if (isStaff && staffHiddenTabs.includes(tabName)) {
+      tab.style.display = 'none';
+    } else {
+      tab.style.display = '';
+    }
+  });
+  // If staff, switch to inspections tab by default
+  if (isStaff) {
+    showSection('inspections');
+  }
+  // Show/hide staff management section in settings
+  const staffMgmt = document.getElementById('staffManagement');
+  if (staffMgmt) staffMgmt.style.display = isStaff ? 'none' : 'block';
+}
+
+async function createStaffAccount() {
+  const email = document.getElementById('staffEmail').value.trim();
+  const password = document.getElementById('staffPassword').value;
+  const errEl = document.getElementById('staffError');
+  const successEl = document.getElementById('staffSuccess');
+  errEl.style.display = 'none';
+  successEl.style.display = 'none';
+
+  if (!email || !password) { errEl.textContent = 'Enter email and password'; errEl.style.display = 'block'; return; }
+  if (password.length < 6) { errEl.textContent = 'Password must be at least 6 characters'; errEl.style.display = 'block'; return; }
+
+  try {
+    // Use Supabase admin invite or sign up with metadata
+    const { data, error } = await sbClient.auth.signUp({
+      email: email,
+      password: password,
+      options: { data: { role: 'staff' } }
+    });
+    if (error) throw error;
+    successEl.textContent = 'Staff account created for ' + email + '. They can now sign in.';
+    successEl.style.display = 'block';
+    document.getElementById('staffEmail').value = '';
+    document.getElementById('staffPassword').value = '';
+    // Reload staff list
+    loadStaffList();
+  } catch(e) {
+    errEl.textContent = e.message || 'Failed to create account';
+    errEl.style.display = 'block';
+  }
+}
+
+async function loadStaffList() {
+  // Staff list is stored in user_data under 'staff_accounts' key for the admin
+  const staffList = document.getElementById('staffList');
+  if (!staffList) return;
+  const accounts = DB.getLocal('staff_accounts', []);
+  if (accounts.length === 0) {
+    staffList.innerHTML = '<p style="color:#888;font-size:13px;">No staff accounts created yet</p>';
+    return;
+  }
+  staffList.innerHTML = accounts.map(a => '<div style="padding:6px 0;border-bottom:1px solid #eee;font-size:13px;">' + escHtml(a.email) + ' <span style="color:#888">(staff)</span></div>').join('');
+}
+
+// Wrap createStaffAccount to also save to local list
+const _origCreateStaff = createStaffAccount;
+async function createStaffAccountAndTrack() {
+  const email = document.getElementById('staffEmail').value.trim();
+  await createStaffAccount();
+  if (document.getElementById('staffSuccess').style.display === 'block') {
+    const accounts = DB.getLocal('staff_accounts', []);
+    if (!accounts.find(a => a.email === email)) {
+      accounts.push({ email, createdAt: new Date().toISOString() });
+      DB.set('staff_accounts', accounts);
+    }
+    loadStaffList();
+  }
 }
 
 // ========== STATE ==========
@@ -1698,6 +1811,11 @@ let editingTrackerIdx = -1;
 
 // ========== NAVIGATION ==========
 function showSection(name) {
+  // Staff role restriction
+  const staffHiddenTabs = ['invoice', 'services', 'history', 'settings'];
+  if (currentUserRole === 'staff' && staffHiddenTabs.includes(name)) {
+    name = 'inspections';
+  }
   document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   document.getElementById('sec-' + name).classList.add('active');
@@ -1917,6 +2035,7 @@ function loadSettings() {
   if (settings.logo) {
     document.getElementById('logoPreview').innerHTML = `<img src="${settings.logo}">`;
   }
+  loadStaffList();
 }
 
 function saveSettings() {
@@ -3397,10 +3516,241 @@ function renderInspectionHistory() {
     html += '<div class="insp-history-stats"><span class="ok-count">' + okCount + ' OK</span> &nbsp; <span class="ra-count">' + raCount + ' R/A</span></div>';
     html += '</div>';
     html += '<div style="display:flex;gap:4px">';
+    html += '<button class="btn btn-sm" style="background:#1a6b1a;color:#fff;border:none;padding:4px 10px;border-radius:4px;cursor:pointer" onclick="event.stopPropagation();generateInspectionPDF(' + i + ')">PDF</button>';
     html += '<button class="btn btn-danger btn-sm" onclick="event.stopPropagation();deleteInspection(' + i + ')">Del</button>';
     html += '</div></div>';
   });
   list.innerHTML = html;
+}
+
+function buildInspectionPDF(data) {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  const pageW = doc.internal.pageSize.width;
+  const pageH = doc.internal.pageSize.height;
+  const red = [204, 0, 0];
+  const black = [26, 26, 26];
+  const gray = [120, 120, 120];
+  const lightGray = [245, 245, 245];
+  const midGray = [200, 200, 200];
+  const green = [34, 139, 34];
+  const orange = [220, 120, 0];
+  const margin = 14;
+  const contentW = pageW - margin * 2;
+
+  function checkPage(needed) {
+    if (y + needed > pageH - 20) { doc.addPage(); y = 20; }
+  }
+
+  // ---- HEADER ----
+  const logoSrc = settings.logo || null;
+  if (logoSrc) { try { doc.addImage(logoSrc, 'PNG', margin, 8, 30, 30); } catch(e) {} }
+  doc.setTextColor(...black);
+  doc.setFontSize(22);
+  doc.setFont(undefined, 'bold');
+  doc.text('VEHICLE INSPECTION REPORT', pageW - margin, 16, { align: 'right' });
+  doc.setFontSize(9);
+  doc.setFont(undefined, 'normal');
+  doc.setTextColor(...gray);
+  let rightY = 24;
+  const bizName = settings.bizName || 'Macs Autos';
+  doc.setFont(undefined, 'bold'); doc.setTextColor(...black);
+  doc.text(bizName, pageW - margin, rightY, { align: 'right' }); rightY += 5;
+  doc.setFont(undefined, 'normal'); doc.setTextColor(...gray);
+  if (settings.bizAddress) { doc.text(settings.bizAddress, pageW - margin, rightY, { align: 'right' }); rightY += 5; }
+  if (settings.bizPhone) { doc.text(settings.bizPhone, pageW - margin, rightY, { align: 'right' }); rightY += 5; }
+  if (settings.bizEmail) { doc.text(settings.bizEmail, pageW - margin, rightY, { align: 'right' }); rightY += 5; }
+  if (settings.bizABN) { doc.text('ABN: ' + settings.bizABN, pageW - margin, rightY, { align: 'right' }); rightY += 5; }
+
+  let y = 48;
+
+  // ---- VEHICLE & CUSTOMER INFO TABLE ----
+  const infoBody = [];
+  if (data.customer.name) infoBody.push(['Customer', data.customer.name, 'Rego', data.vehicle.rego || '']);
+  if (data.customer.phone || data.customer.email) infoBody.push(['Phone', data.customer.phone || '', 'Email', data.customer.email || '']);
+  if (data.customer.address) infoBody.push(['Address', data.customer.address, '', '']);
+  infoBody.push(['Make', data.vehicle.make || '', 'Model', data.vehicle.model || '']);
+  infoBody.push(['Build Year', data.vehicle.buildYear || '', 'Build Month', data.vehicle.buildMonth || '']);
+  infoBody.push(['VIN', data.vehicle.vin || '', 'Odometer', data.vehicle.odometer ? data.vehicle.odometer + ' km' : '']);
+  if (data.vehicle.regoExp) infoBody.push(['Rego Expiry', data.vehicle.regoExp, '', '']);
+
+  doc.autoTable({
+    startY: y, body: infoBody, theme: 'plain',
+    columnStyles: { 0: { fontStyle: 'bold', cellWidth: 28, textColor: gray }, 1: { cellWidth: 58 }, 2: { fontStyle: 'bold', cellWidth: 28, textColor: gray }, 3: { cellWidth: 58 } },
+    styles: { fontSize: 8, cellPadding: 2, textColor: [50,50,50] },
+    margin: { left: margin, right: margin }
+  });
+  y = doc.lastAutoTable.finalY + 4;
+
+  // ---- VEHICLE SPECS ----
+  if (data.specs) {
+    const specPairs = [
+      ['Engine Oil', data.specs.engineOil], ['Trans Oil', data.specs.transOil],
+      ['Oil Filter', data.specs.oilFilter], ['Air Cleaner', data.specs.airCleaner],
+      ['Pollen Filter', data.specs.pollenFilter], ['Spark Plugs', data.specs.sparkPlugs],
+      ['AC Gas Qty', data.specs.acGas], ['Fuel Filter', data.specs.fuelFilter]
+    ].filter(p => p[1]);
+    if (specPairs.length > 0) {
+      const specBody = [];
+      for (let i = 0; i < specPairs.length; i += 2) {
+        const row = [specPairs[i][0], specPairs[i][1]];
+        if (specPairs[i+1]) { row.push(specPairs[i+1][0], specPairs[i+1][1]); } else { row.push('', ''); }
+        specBody.push(row);
+      }
+      checkPage(10 + specBody.length * 6);
+      doc.setFillColor(...red); doc.roundedRect(margin, y, contentW, 7, 1.5, 1.5, 'F');
+      doc.setFontSize(8); doc.setFont(undefined, 'bold'); doc.setTextColor(255,255,255);
+      doc.text('VEHICLE SPECS', margin + 4, y + 5); y += 9;
+      doc.autoTable({
+        startY: y, body: specBody, theme: 'plain',
+        columnStyles: { 0: { fontStyle: 'bold', cellWidth: 28, textColor: gray }, 1: { cellWidth: 58 }, 2: { fontStyle: 'bold', cellWidth: 28, textColor: gray }, 3: { cellWidth: 58 } },
+        styles: { fontSize: 8, cellPadding: 2, textColor: [50,50,50] },
+        margin: { left: margin, right: margin }
+      });
+      y = doc.lastAutoTable.finalY + 4;
+    }
+  }
+
+  // ---- INSPECTION SECTIONS ----
+  INSP_SECTIONS.forEach(section => {
+    const rows = [];
+    section.items.forEach(item => {
+      const entry = (data.checks || {})[item.id] || {};
+      let statusText = '';
+      if (entry.status === 'ok') statusText = 'OK';
+      else if (entry.status === 'ra') statusText = 'R/A';
+      let extra = '';
+      if (item.extra === 'checkboxes' && entry.opts) {
+        const checked = Object.entries(entry.opts).filter(([k,v]) => v).map(([k]) => k);
+        if (checked.length) extra = checked.join(', ');
+      } else if (item.extra === 'input' && entry.value) {
+        extra = entry.value + (item.unit ? ' ' + item.unit : '');
+      } else if (item.extra === 'dual-input' && entry.values) {
+        const parts = [];
+        if (entry.values.km) parts.push(entry.values.km + ' km');
+        if (entry.values.date) parts.push(entry.values.date);
+        extra = parts.join(', ');
+      } else if (item.extra === 'tyre-inputs' && entry.tyres) {
+        const parts = Object.entries(entry.tyres).filter(([k,v]) => v).map(([k,v]) => k + ':' + v);
+        if (parts.length) extra = parts.join('  ');
+      }
+      rows.push({ label: item.label, status: statusText, extra: extra, isRA: entry.status === 'ra' });
+    });
+
+    // Check if we need a brake table for this section
+    const brakeItem = section.items.find(i => i.extra === 'brake-table');
+    const hasBrakeData = brakeItem && (data.checks || {})[brakeItem.id] && (data.checks || {})[brakeItem.id].brakes;
+
+    checkPage(12 + rows.length * 6 + (hasBrakeData ? 40 : 0));
+
+    // Section header
+    doc.setFillColor(...red); doc.roundedRect(margin, y, contentW, 7, 1.5, 1.5, 'F');
+    doc.setFontSize(8); doc.setFont(undefined, 'bold'); doc.setTextColor(255,255,255);
+    doc.text(section.title.toUpperCase(), margin + 4, y + 5); y += 9;
+
+    // Table header
+    const tableBody = rows.map(r => {
+      const row = [r.label, r.status];
+      if (r.extra) row.push(r.extra);
+      else row.push('');
+      return row;
+    });
+
+    doc.autoTable({
+      startY: y,
+      head: [['Item', 'Status', 'Details']],
+      body: tableBody,
+      theme: 'striped',
+      headStyles: { fillColor: [80,80,80], textColor: [255,255,255], fontStyle: 'bold', fontSize: 7, cellPadding: 2 },
+      bodyStyles: { fontSize: 7, cellPadding: 2, textColor: [50,50,50] },
+      columnStyles: { 0: { cellWidth: 'auto' }, 1: { cellWidth: 16, halign: 'center' }, 2: { cellWidth: 50 } },
+      styles: { overflow: 'linebreak' },
+      margin: { left: margin, right: margin },
+      didParseCell: function(hookData) {
+        if (hookData.section === 'body' && hookData.column.index === 1) {
+          const val = hookData.cell.raw;
+          if (val === 'OK') { hookData.cell.styles.textColor = green; hookData.cell.styles.fontStyle = 'bold'; }
+          else if (val === 'R/A') { hookData.cell.styles.textColor = [204,0,0]; hookData.cell.styles.fontStyle = 'bold'; }
+        }
+      }
+    });
+    y = doc.lastAutoTable.finalY + 2;
+
+    // Brake measurement table
+    if (hasBrakeData) {
+      const brakeData = (data.checks || {})[brakeItem.id].brakes;
+      checkPage(30);
+      doc.setFontSize(7); doc.setFont(undefined, 'bold'); doc.setTextColor(...black);
+      doc.text('Brake Measurements', margin + 2, y + 4); y += 6;
+      const brakeBody = BRAKE_ROWS.map(r => {
+        const rk = r.replace(/\s/g,'');
+        const rd = brakeData[rk] || {};
+        return [r, rd.Spec || '', rd['DiscDrumSize'] || '', rd['Lining'] || '', rd['CaliperCyl'] || '', rd.Seal || ''];
+      });
+      doc.autoTable({
+        startY: y,
+        head: [['Position', 'Spec', 'Disc/Drum Size', 'Lining %', 'Caliper/Cyl', 'Seal']],
+        body: brakeBody,
+        theme: 'grid',
+        headStyles: { fillColor: [80,80,80], textColor: [255,255,255], fontStyle: 'bold', fontSize: 6, cellPadding: 2 },
+        bodyStyles: { fontSize: 6, cellPadding: 2, textColor: [50,50,50] },
+        margin: { left: margin, right: margin }
+      });
+      y = doc.lastAutoTable.finalY + 4;
+    }
+  });
+
+  // ---- SUMMARY ----
+  checkPage(30);
+  let okCount = 0, raCount = 0;
+  if (data.checks) {
+    Object.values(data.checks).forEach(c => {
+      if (c.status === 'ok') okCount++;
+      else if (c.status === 'ra') raCount++;
+    });
+  }
+  doc.setFillColor(...lightGray); doc.roundedRect(margin, y, contentW, 18, 2, 2, 'F');
+  doc.setFontSize(10); doc.setFont(undefined, 'bold'); doc.setTextColor(...black);
+  doc.text('INSPECTION SUMMARY', margin + 4, y + 7);
+  doc.setFontSize(9); doc.setTextColor(...green); doc.text('OK: ' + okCount, margin + 70, y + 7);
+  doc.setTextColor(204,0,0); doc.text('Requires Attention: ' + raCount, margin + 100, y + 7);
+  doc.setFont(undefined, 'normal'); doc.setFontSize(8); doc.setTextColor(...gray);
+  if (data.technician) doc.text('Technician: ' + data.technician, margin + 4, y + 14);
+  if (data.dateTime) doc.text('Date: ' + data.dateTime, margin + 80, y + 14);
+  y += 22;
+
+  // ---- NOTES ----
+  if (data.notes) {
+    checkPage(20);
+    doc.setFontSize(8); doc.setFont(undefined, 'bold'); doc.setTextColor(...black);
+    doc.text('NOTES:', margin, y + 4); y += 6;
+    doc.setFont(undefined, 'normal'); doc.setTextColor(60,60,60);
+    const noteLines = doc.splitTextToSize(data.notes, contentW - 4);
+    doc.text(noteLines, margin + 2, y + 3);
+    y += noteLines.length * 4 + 6;
+  }
+
+  // ---- FOOTER on each page ----
+  const pageCount = doc.internal.getNumberOfPages();
+  for (let p = 1; p <= pageCount; p++) {
+    doc.setPage(p);
+    doc.setFontSize(7); doc.setFont(undefined, 'normal'); doc.setTextColor(...midGray);
+    doc.text((settings.bizName || 'Macs Autos') + ' - Vehicle Inspection Report', margin, pageH - 8);
+    doc.text('Page ' + p + ' of ' + pageCount, pageW - margin, pageH - 8, { align: 'right' });
+  }
+
+  // Generate filename
+  const custName = (data.customer.name || 'inspection').replace(/[^a-zA-Z0-9]/g, '_');
+  const rego = (data.vehicle.rego || '').replace(/[^a-zA-Z0-9]/g, '_');
+  const fname = 'Inspection_' + custName + (rego ? '_' + rego : '') + '.pdf';
+  doc.save(fname);
+  toast('Inspection PDF downloaded');
+}
+
+function generateInspectionPDF(idx) {
+  const data = typeof idx === 'number' ? inspections[idx] : collectInspectionData();
+  if (!data.customer.name && !data.vehicle.rego) { toast('Enter customer name or rego first'); return; }
+  buildInspectionPDF(data);
 }
 
 function clearInspectionForm() {
