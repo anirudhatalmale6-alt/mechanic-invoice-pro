@@ -1227,9 +1227,10 @@
     <!-- Log new service form -->
     <div class="card" style="margin-top:16px">
       <div class="card-title"><span class="icon">&#128295;</span> <span id="trackerFormTitle">Log New Service</span></div>
-      <div class="form-group">
+      <div class="form-group" style="position:relative;">
         <label>Customer Name</label>
-        <input type="text" id="trkCustName" placeholder="e.g. John Smith">
+        <input type="text" id="trkCustName" placeholder="e.g. John Smith" oninput="showCustomerAutocomplete(this, 'tracker')" autocomplete="off">
+        <div id="trkCustNameAC" class="autocomplete-list" style="display:none;"></div>
       </div>
       <div class="form-group">
         <label>Phone</label>
@@ -3994,7 +3995,7 @@ function saveCustomerEdit(originalName) {
 // Autocomplete for customer name fields
 function showCustomerAutocomplete(input, formType) {
   const val = input.value.trim().toLowerCase();
-  const acId = formType === 'invoice' ? 'custNameAC' : 'inspCustNameAC';
+  const acId = formType === 'invoice' ? 'custNameAC' : formType === 'tracker' ? 'trkCustNameAC' : 'inspCustNameAC';
   const acEl = document.getElementById(acId);
   if (!val || val.length < 2) { acEl.style.display = 'none'; return; }
   const customers = buildCustomerList().filter(c => c.name.toLowerCase().includes(val));
@@ -4024,6 +4025,13 @@ function selectCustomer(name, formType) {
     if (cust.vehicles.length) document.getElementById('custVehicle').value = cust.vehicles[0];
     if (cust.regos.length) document.getElementById('custRego').value = cust.regos[0];
     document.getElementById('custNameAC').style.display = 'none';
+    toast('Customer details filled');
+  } else if (formType === 'tracker') {
+    document.getElementById('trkCustName').value = cust.name;
+    if (cust.phone) document.getElementById('trkCustPhone').value = cust.phone;
+    if (cust.vehicles.length) document.getElementById('trkVehicle').value = cust.vehicles[0];
+    if (cust.regos.length) document.getElementById('trkRego').value = cust.regos[0];
+    document.getElementById('trkCustNameAC').style.display = 'none';
     toast('Customer details filled');
   } else {
     document.getElementById('inspCustName').value = cust.name;
