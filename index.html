@@ -846,6 +846,47 @@
     .insp-history-stats .ok-count { color: var(--success); font-weight: 700; }
     .insp-history-stats .ra-count { color: #e74c3c; font-weight: 700; }
 
+    /* Customer cards */
+    .cust-card {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 14px;
+      background: var(--card);
+      border-radius: var(--radius);
+      margin-bottom: 10px;
+      border: 1px solid var(--border);
+      border-left: 4px solid #2563eb;
+      transition: box-shadow 0.2s;
+    }
+    .cust-card:hover { box-shadow: 0 3px 12px rgba(0,0,0,0.1); }
+    .cust-name { font-weight: 700; color: #1a1a1a; font-size: 15px; }
+    .cust-detail { color: var(--text-light); font-size: 13px; margin-top: 2px; }
+    .cust-vehicles { font-size: 12px; color: #666; margin-top: 4px; }
+    .cust-badge { font-size: 11px; background: #e8f4e8; color: #1a6b1a; padding: 2px 8px; border-radius: 10px; font-weight: 600; }
+
+    /* Autocomplete dropdown */
+    .autocomplete-list {
+      position: absolute;
+      left: 0; right: 0; top: 100%;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 0 0 8px 8px;
+      max-height: 200px;
+      overflow-y: auto;
+      z-index: 100;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    .autocomplete-item {
+      padding: 10px 14px;
+      cursor: pointer;
+      font-size: 13px;
+      border-bottom: 1px solid #f0f0f0;
+    }
+    .autocomplete-item:hover { background: #f5f5f5; }
+    .autocomplete-item strong { color: var(--primary); }
+    .autocomplete-item .ac-detail { color: #888; font-size: 11px; }
+
     /* Auth overlay */
     .auth-overlay {
       display: none;
@@ -984,6 +1025,7 @@
   <div class="tab" data-tab="history" onclick="showSection('history')">History</div>
   <div class="tab" data-tab="tracker" onclick="showSection('tracker')">Tracker</div>
   <div class="tab" data-tab="inspections" onclick="showSection('inspections')">Inspections</div>
+  <div class="tab" data-tab="customers" onclick="showSection('customers')">Customers</div>
   <div class="tab" data-tab="settings" onclick="showSection('settings')">Settings</div>
 </div>
 
@@ -1001,9 +1043,10 @@
 
     <div class="card">
       <div class="card-title"><span class="icon">&#128100;</span> Customer Details</div>
-      <div class="form-group">
+      <div class="form-group" style="position:relative;">
         <label>Customer Name</label>
-        <input type="text" id="custName" placeholder="e.g. John Smith">
+        <input type="text" id="custName" placeholder="e.g. John Smith" oninput="showCustomerAutocomplete(this, 'invoice')" autocomplete="off">
+        <div id="custNameAC" class="autocomplete-list" style="display:none;"></div>
       </div>
       <div class="form-row">
         <div class="form-group">
@@ -1263,7 +1306,7 @@
       <div class="card">
         <div class="card-title"><span class="icon">&#128663;</span> Vehicle Information</div>
         <div class="insp-vehicle-grid">
-          <div class="form-group"><label>Customer Name</label><input type="text" id="inspCustName"></div>
+          <div class="form-group" style="position:relative;"><label>Customer Name</label><input type="text" id="inspCustName" oninput="showCustomerAutocomplete(this, 'inspection')" autocomplete="off"><div id="inspCustNameAC" class="autocomplete-list" style="display:none;"></div></div>
           <div class="form-group"><label>Phone</label><input type="text" id="inspCustPhone"></div>
           <div class="form-group"><label>Address</label><input type="text" id="inspCustAddr"></div>
           <div class="form-group"><label>Email</label><input type="email" id="inspCustEmail"></div>
@@ -1330,6 +1373,19 @@
       <div class="empty-state" id="inspHistoryEmpty">
         <div class="icon">&#128269;</div>
         <p>No inspections yet. Create your first one!</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== CUSTOMERS ==================== -->
+  <div class="section" id="sec-customers">
+    <div class="card">
+      <div class="card-title"><span class="icon">&#128101;</span> Customer Database</div>
+      <input type="text" id="customerSearch" placeholder="Search by name, phone, email, rego..." oninput="renderCustomers()" style="margin-bottom:12px;">
+      <div id="customerCount" style="font-size:12px;color:#888;margin-bottom:10px;"></div>
+      <div id="customerList"></div>
+      <div id="customerEmpty" style="text-align:center;color:#888;padding:30px 0;display:none;">
+        <p>No customers yet. Customers are automatically added when you save invoices or inspections.</p>
       </div>
     </div>
   </div>
@@ -1824,6 +1880,7 @@ function showSection(name) {
   if (name === 'history') renderHistory();
   if (name === 'tracker') renderTracker();
   if (name === 'inspections') { renderInspections(); renderInspectionHistory(); }
+  if (name === 'customers') renderCustomers();
   if (name === 'settings') loadSettings();
 }
 
@@ -3750,6 +3807,145 @@ function clearInspectionForm() {
   document.getElementById('inspTechnician').value = '';
   const now = new Date();
   document.getElementById('inspDateTime').value = now.toLocaleDateString('en-AU') + ' ' + now.toLocaleTimeString('en-AU', {hour:'2-digit',minute:'2-digit'});
+}
+
+// ========== CUSTOMER DATABASE ==========
+function buildCustomerList() {
+  const map = {};
+  // Extract from invoices
+  (invoices || []).forEach(inv => {
+    if (!inv.customer || !inv.customer.name) return;
+    const key = inv.customer.name.trim().toLowerCase();
+    if (!map[key]) map[key] = { name: inv.customer.name.trim(), phone: '', email: '', vehicles: [], regos: [], addresses: [], invoiceCount: 0, inspectionCount: 0 };
+    map[key].invoiceCount++;
+    if (inv.customer.phone && !map[key].phone) map[key].phone = inv.customer.phone;
+    if (inv.customer.email && !map[key].email) map[key].email = inv.customer.email;
+    if (inv.customer.vehicle) {
+      const v = inv.customer.vehicle.trim();
+      if (v && !map[key].vehicles.includes(v)) map[key].vehicles.push(v);
+    }
+    if (inv.customer.rego) {
+      const r = inv.customer.rego.trim();
+      if (r && !map[key].regos.includes(r)) map[key].regos.push(r);
+    }
+  });
+  // Extract from inspections
+  (inspections || []).forEach(insp => {
+    if (!insp.customer || !insp.customer.name) return;
+    const key = insp.customer.name.trim().toLowerCase();
+    if (!map[key]) map[key] = { name: insp.customer.name.trim(), phone: '', email: '', vehicles: [], regos: [], addresses: [], invoiceCount: 0, inspectionCount: 0 };
+    map[key].inspectionCount++;
+    if (insp.customer.phone && !map[key].phone) map[key].phone = insp.customer.phone;
+    if (insp.customer.email && !map[key].email) map[key].email = insp.customer.email;
+    if (insp.customer.address && !map[key].addresses.includes(insp.customer.address.trim())) map[key].addresses.push(insp.customer.address.trim());
+    const vParts = [insp.vehicle.make, insp.vehicle.model].filter(Boolean).join(' ').trim();
+    if (vParts && !map[key].vehicles.includes(vParts)) map[key].vehicles.push(vParts);
+    if (insp.vehicle.rego) {
+      const r = insp.vehicle.rego.trim();
+      if (r && !map[key].regos.includes(r)) map[key].regos.push(r);
+    }
+  });
+  return Object.values(map).sort((a, b) => a.name.localeCompare(b.name));
+}
+
+function renderCustomers() {
+  const list = document.getElementById('customerList');
+  const empty = document.getElementById('customerEmpty');
+  const countEl = document.getElementById('customerCount');
+  const search = (document.getElementById('customerSearch').value || '').toLowerCase().trim();
+  let customers = buildCustomerList();
+  if (search) {
+    customers = customers.filter(c =>
+      c.name.toLowerCase().includes(search) ||
+      c.phone.toLowerCase().includes(search) ||
+      c.email.toLowerCase().includes(search) ||
+      c.regos.some(r => r.toLowerCase().includes(search)) ||
+      c.vehicles.some(v => v.toLowerCase().includes(search))
+    );
+  }
+  if (customers.length === 0) {
+    list.innerHTML = '';
+    empty.style.display = search ? 'none' : 'block';
+    countEl.textContent = search ? 'No matches found' : '';
+    if (search) list.innerHTML = '<div style="text-align:center;color:#888;padding:20px;">No customers match "' + escHtml(search) + '"</div>';
+    return;
+  }
+  empty.style.display = 'none';
+  countEl.textContent = customers.length + ' customer' + (customers.length !== 1 ? 's' : '');
+  let html = '';
+  customers.forEach(c => {
+    html += '<div class="cust-card">';
+    html += '<div style="flex:1">';
+    html += '<div class="cust-name">' + escHtml(c.name) + '</div>';
+    const details = [];
+    if (c.phone) details.push(escHtml(c.phone));
+    if (c.email) details.push(escHtml(c.email));
+    if (details.length) html += '<div class="cust-detail">' + details.join(' &bull; ') + '</div>';
+    if (c.addresses.length) html += '<div class="cust-detail">' + escHtml(c.addresses[0]) + '</div>';
+    if (c.vehicles.length || c.regos.length) {
+      const veh = c.vehicles.map(v => escHtml(v));
+      const reg = c.regos.map(r => escHtml(r));
+      html += '<div class="cust-vehicles">Vehicles: ' + (veh.length ? veh.join(', ') : 'N/A') + (reg.length ? ' (Rego: ' + reg.join(', ') + ')' : '') + '</div>';
+    }
+    html += '</div>';
+    html += '<div style="display:flex;gap:6px;align-items:center;">';
+    if (c.invoiceCount) html += '<span class="cust-badge">' + c.invoiceCount + ' inv</span>';
+    if (c.inspectionCount) html += '<span class="cust-badge" style="background:#e8eef8;color:#2563eb;">' + c.inspectionCount + ' insp</span>';
+    html += '</div>';
+    html += '</div>';
+  });
+  list.innerHTML = html;
+}
+
+// Autocomplete for customer name fields
+function showCustomerAutocomplete(input, formType) {
+  const val = input.value.trim().toLowerCase();
+  const acId = formType === 'invoice' ? 'custNameAC' : 'inspCustNameAC';
+  const acEl = document.getElementById(acId);
+  if (!val || val.length < 2) { acEl.style.display = 'none'; return; }
+  const customers = buildCustomerList().filter(c => c.name.toLowerCase().includes(val));
+  if (customers.length === 0) { acEl.style.display = 'none'; return; }
+  let html = '';
+  customers.slice(0, 6).forEach(c => {
+    const detail = [c.phone, c.vehicles[0], c.regos[0]].filter(Boolean).join(' | ');
+    html += '<div class="autocomplete-item" onmousedown="selectCustomer(\'' + escHtml(c.name.replace(/'/g, "\\'")) + '\',\'' + formType + '\')">';
+    html += '<strong>' + escHtml(c.name) + '</strong>';
+    if (detail) html += '<div class="ac-detail">' + escHtml(detail) + '</div>';
+    html += '</div>';
+  });
+  acEl.innerHTML = html;
+  acEl.style.display = 'block';
+  // Hide on blur
+  input.onblur = function() { setTimeout(() => { acEl.style.display = 'none'; }, 200); };
+}
+
+function selectCustomer(name, formType) {
+  const customers = buildCustomerList();
+  const cust = customers.find(c => c.name === name);
+  if (!cust) return;
+  if (formType === 'invoice') {
+    document.getElementById('custName').value = cust.name;
+    if (cust.phone) document.getElementById('custPhone').value = cust.phone;
+    if (cust.email) document.getElementById('custEmail').value = cust.email;
+    if (cust.vehicles.length) document.getElementById('custVehicle').value = cust.vehicles[0];
+    if (cust.regos.length) document.getElementById('custRego').value = cust.regos[0];
+    document.getElementById('custNameAC').style.display = 'none';
+    toast('Customer details filled');
+  } else {
+    document.getElementById('inspCustName').value = cust.name;
+    if (cust.phone) document.getElementById('inspCustPhone').value = cust.phone;
+    if (cust.email) document.getElementById('inspCustEmail').value = cust.email;
+    if (cust.addresses.length) document.getElementById('inspCustAddr').value = cust.addresses[0];
+    if (cust.regos.length) document.getElementById('inspRego').value = cust.regos[0];
+    // Fill vehicle make/model from first vehicle
+    if (cust.vehicles.length) {
+      const parts = cust.vehicles[0].split(' ');
+      if (parts.length >= 1) document.getElementById('inspMake').value = parts[0];
+      if (parts.length >= 2) document.getElementById('inspModel').value = parts.slice(1).join(' ');
+    }
+    document.getElementById('inspCustNameAC').style.display = 'none';
+    toast('Customer details filled');
+  }
 }
 
 // ========== INIT ==========
