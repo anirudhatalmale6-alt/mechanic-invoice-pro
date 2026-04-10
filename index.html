@@ -1152,14 +1152,14 @@
 <script>
 // ========== SUPABASE CONFIG ==========
 // Leave empty to use localStorage (offline mode). Fill in to enable cloud sync.
-const SUPABASE_URL = '';
-const SUPABASE_ANON_KEY = '';
+const SUPABASE_URL = 'https://xmykszocnyewmwtypivb.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_nzh28eMhxH6E9wJDDkkipw_vmihWTGV';
 const USE_CLOUD = !!(SUPABASE_URL && SUPABASE_ANON_KEY);
 
-let supabase = null;
+let sbClient = null;
 let currentUser = null;
 if (USE_CLOUD && window.supabase) {
-  supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 }
 
 // ========== DEFAULT LOGO ==========
@@ -1183,26 +1183,26 @@ const DB = {
 
   // Cloud sync methods
   async syncToCloud(key, val) {
-    if (!supabase || !currentUser) return;
+    if (!sbClient || !currentUser) return;
     try {
       if (key === 'settings') {
-        await supabase.from('settings').upsert({ user_id: currentUser.id, data: val }, { onConflict: 'user_id' });
+        await sbClient.from('settings').upsert({ user_id: currentUser.id, data: val }, { onConflict: 'user_id' });
       } else if (key === 'services') {
-        await supabase.from('user_data').upsert({ user_id: currentUser.id, key: 'services', data: val }, { onConflict: 'user_id,key' });
+        await sbClient.from('user_data').upsert({ user_id: currentUser.id, key: 'services', data: val }, { onConflict: 'user_id,key' });
       } else if (key === 'invoices') {
-        await supabase.from('user_data').upsert({ user_id: currentUser.id, key: 'invoices', data: val }, { onConflict: 'user_id,key' });
+        await sbClient.from('user_data').upsert({ user_id: currentUser.id, key: 'invoices', data: val }, { onConflict: 'user_id,key' });
       } else if (key === 'tracker') {
-        await supabase.from('user_data').upsert({ user_id: currentUser.id, key: 'tracker', data: val }, { onConflict: 'user_id,key' });
+        await sbClient.from('user_data').upsert({ user_id: currentUser.id, key: 'tracker', data: val }, { onConflict: 'user_id,key' });
       }
     } catch(e) { console.warn('Cloud sync failed:', e); }
   },
 
   async loadFromCloud() {
-    if (!supabase || !currentUser) return null;
+    if (!sbClient || !currentUser) return null;
     try {
       const [settingsRes, dataRes] = await Promise.all([
-        supabase.from('settings').select('data').eq('user_id', currentUser.id).single(),
-        supabase.from('user_data').select('key, data').eq('user_id', currentUser.id)
+        sbClient.from('settings').select('data').eq('user_id', currentUser.id).maybeSingle(),
+        sbClient.from('user_data').select('key, data').eq('user_id', currentUser.id)
       ]);
 
       const result = {};
@@ -1221,7 +1221,7 @@ const DB = {
   },
 
   async migrateLocalToCloud() {
-    if (!supabase || !currentUser) return;
+    if (!sbClient || !currentUser) return;
     const localSettings = this.getLocal('settings', null);
     const localServices = this.getLocal('services', null);
     const localInvoices = this.getLocal('invoices', null);
@@ -1253,7 +1253,7 @@ function showAuthError(msg) {
 }
 
 async function handleAuth() {
-  if (!supabase) return;
+  if (!sbClient) return;
   const email = document.getElementById('authEmail').value.trim();
   const password = document.getElementById('authPassword').value;
   if (!email || !password) { showAuthError('Enter email and password'); return; }
@@ -1266,7 +1266,7 @@ async function handleAuth() {
   try {
     let result;
     if (authMode === 'signup') {
-      result = await supabase.auth.signUp({ email, password });
+      result = await sbClient.auth.signUp({ email, password });
       if (result.error) throw result.error;
       if (result.data.user && !result.data.session) {
         showAuthError('Check your email for a confirmation link, then sign in.');
@@ -1275,7 +1275,7 @@ async function handleAuth() {
         return;
       }
     } else {
-      result = await supabase.auth.signInWithPassword({ email, password });
+      result = await sbClient.auth.signInWithPassword({ email, password });
       if (result.error) throw result.error;
     }
 
@@ -1317,8 +1317,8 @@ async function onAuthSuccess() {
 }
 
 async function handleLogout() {
-  if (!supabase) return;
-  await supabase.auth.signOut();
+  if (!sbClient) return;
+  await sbClient.auth.signOut();
   currentUser = null;
   document.getElementById('logoutBtn').style.display = 'none';
   document.getElementById('authOverlay').classList.add('show');
@@ -1328,9 +1328,9 @@ async function handleLogout() {
 }
 
 async function checkExistingSession() {
-  if (!supabase) return false;
+  if (!sbClient) return false;
   try {
-    const { data: { session } } = await supabase.auth.getSession();
+    const { data: { session } } = await sbClient.auth.getSession();
     if (session && session.user) {
       currentUser = session.user;
       await onAuthSuccess();
