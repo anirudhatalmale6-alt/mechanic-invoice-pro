@@ -1595,6 +1595,8 @@ const DB = {
         await sbClient.from('user_data').upsert({ user_id: currentUser.id, key: 'tracker', data: val }, { onConflict: 'user_id,key' });
       } else if (key === 'inspections') {
         await sbClient.from('user_data').upsert({ user_id: currentUser.id, key: 'inspections', data: val }, { onConflict: 'user_id,key' });
+      } else if (key === 'customerOverrides' || key === 'deletedCustomers' || key === 'staff_accounts') {
+        await sbClient.from('user_data').upsert({ user_id: currentUser.id, key: key, data: val }, { onConflict: 'user_id,key' });
       }
     } catch(e) { console.warn('Cloud sync failed:', e); }
   },
@@ -1705,6 +1707,9 @@ async function onAuthSuccess() {
     if (cloudData.invoices) { invoices = cloudData.invoices; DB.setLocal('invoices', invoices); }
     if (cloudData.tracker) { trackerEntries = cloudData.tracker; DB.setLocal('tracker', trackerEntries); }
     if (cloudData.inspections) { inspections = cloudData.inspections; DB.setLocal('inspections', inspections); }
+    if (cloudData.customerOverrides) { DB.setLocal('customerOverrides', cloudData.customerOverrides); }
+    if (cloudData.deletedCustomers) { DB.setLocal('deletedCustomers', cloudData.deletedCustomers); }
+    if (cloudData.staff_accounts) { DB.setLocal('staff_accounts', cloudData.staff_accounts); }
   } else {
     // No cloud data - migrate local data to cloud
     const hasLocal = DB.getLocal('invoices', []).length > 0 || DB.getLocal('services', []).length > 0;
@@ -1813,7 +1818,18 @@ async function loadStaffList() {
     staffList.innerHTML = '<p style="color:#888;font-size:13px;">No staff accounts created yet</p>';
     return;
   }
-  staffList.innerHTML = accounts.map(a => '<div style="padding:6px 0;border-bottom:1px solid #eee;font-size:13px;">' + escHtml(a.email) + ' <span style="color:#888">(staff)</span></div>').join('');
+  staffList.innerHTML = accounts.map((a, i) => '<div style="padding:8px 0;border-bottom:1px solid #eee;font-size:13px;display:flex;justify-content:space-between;align-items:center;">' + escHtml(a.email) + ' <span style="color:#888">(staff)</span><button onclick="deleteStaffAccount(' + i + ')" style="background:#cc0000;color:#fff;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;font-size:12px;">Remove</button></div>').join('');
+}
+
+function deleteStaffAccount(idx) {
+  const accounts = DB.getLocal('staff_accounts', []);
+  if (!accounts[idx]) return;
+  const email = accounts[idx].email;
+  if (!confirm('Remove staff account ' + email + '? They will no longer be able to log in as staff.')) return;
+  accounts.splice(idx, 1);
+  DB.set('staff_accounts', accounts);
+  loadStaffList();
+  toast('Staff account removed');
 }
 
 // Wrap createStaffAccount to also save to local list
@@ -3810,7 +3826,7 @@ function clearInspectionForm() {
 }
 
 // ========== CUSTOMER DATABASE ==========
-function buildCustomerList() {
+function buildCustomerList(includeDeleted) {
   const map = {};
   // Extract from invoices
   (invoices || []).forEach(inv => {
@@ -3845,6 +3861,25 @@ function buildCustomerList() {
       if (r && !map[key].regos.includes(r)) map[key].regos.push(r);
     }
   });
+  // Apply manual edits from customerOverrides
+  const overrides = DB.getLocal('customerOverrides', {});
+  Object.keys(overrides).forEach(key => {
+    const o = overrides[key];
+    if (map[key]) {
+      if (o.name) map[key].name = o.name;
+      if (o.phone !== undefined) map[key].phone = o.phone;
+      if (o.email !== undefined) map[key].email = o.email;
+      if (o.address) { map[key].addresses = [o.address]; }
+    } else {
+      // Manually added customer
+      map[key] = { name: o.name || key, phone: o.phone || '', email: o.email || '', vehicles: [], regos: [], addresses: o.address ? [o.address] : [], invoiceCount: 0, inspectionCount: 0 };
+    }
+  });
+  // Filter out deleted customers
+  if (!includeDeleted) {
+    const deleted = DB.getLocal('deletedCustomers', []);
+    deleted.forEach(key => { delete map[key]; });
+  }
   return Object.values(map).sort((a, b) => a.name.localeCompare(b.name));
 }
 
@@ -3888,13 +3923,72 @@ function renderCustomers() {
       html += '<div class="cust-vehicles">Vehicles: ' + (veh.length ? veh.join(', ') : 'N/A') + (reg.length ? ' (Rego: ' + reg.join(', ') + ')' : '') + '</div>';
     }
     html += '</div>';
-    html += '<div style="display:flex;gap:6px;align-items:center;">';
+    html += '<div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end;">';
+    html += '<div style="display:flex;gap:4px;">';
     if (c.invoiceCount) html += '<span class="cust-badge">' + c.invoiceCount + ' inv</span>';
     if (c.inspectionCount) html += '<span class="cust-badge" style="background:#e8eef8;color:#2563eb;">' + c.inspectionCount + ' insp</span>';
+    html += '</div>';
+    const nameEsc = escHtml(c.name.replace(/'/g, "\\'"));
+    html += '<div style="display:flex;gap:4px;margin-top:4px;">';
+    html += '<button onclick="editCustomer(\'' + nameEsc + '\')" style="background:#2563eb;color:#fff;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;font-size:12px;">Edit</button>';
+    html += '<button onclick="deleteCustomer(\'' + nameEsc + '\')" style="background:#cc0000;color:#fff;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;font-size:12px;">Del</button>';
+    html += '</div>';
     html += '</div>';
     html += '</div>';
   });
   list.innerHTML = html;
+}
+
+function deleteCustomer(name) {
+  if (!confirm('Delete customer "' + name + '" from the list? Their invoices and inspections will not be affected.')) return;
+  const key = name.trim().toLowerCase();
+  const deleted = DB.getLocal('deletedCustomers', []);
+  if (!deleted.includes(key)) {
+    deleted.push(key);
+    DB.set('deletedCustomers', deleted);
+  }
+  // Also remove any overrides
+  const overrides = DB.getLocal('customerOverrides', {});
+  delete overrides[key];
+  DB.set('customerOverrides', overrides);
+  renderCustomers();
+  toast('Customer deleted');
+}
+
+function editCustomer(name) {
+  const customers = buildCustomerList();
+  const cust = customers.find(c => c.name === name);
+  if (!cust) return;
+
+  // Build a simple edit form in a modal-style overlay
+  const overlay = document.createElement('div');
+  overlay.id = 'custEditOverlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:600;display:flex;justify-content:center;align-items:center;';
+  overlay.innerHTML = '<div style="background:#fff;border-radius:12px;padding:24px;max-width:420px;width:90%;max-height:80vh;overflow-y:auto;">' +
+    '<h3 style="margin:0 0 16px;font-size:18px;">Edit Customer</h3>' +
+    '<div style="margin-bottom:10px;"><label style="font-size:12px;font-weight:700;color:#666;">NAME</label><input type="text" id="editCustName" value="' + escHtml(cust.name) + '" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:14px;box-sizing:border-box;"></div>' +
+    '<div style="margin-bottom:10px;"><label style="font-size:12px;font-weight:700;color:#666;">PHONE</label><input type="text" id="editCustPhone" value="' + escHtml(cust.phone) + '" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:14px;box-sizing:border-box;"></div>' +
+    '<div style="margin-bottom:10px;"><label style="font-size:12px;font-weight:700;color:#666;">EMAIL</label><input type="email" id="editCustEmail" value="' + escHtml(cust.email) + '" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:14px;box-sizing:border-box;"></div>' +
+    '<div style="margin-bottom:16px;"><label style="font-size:12px;font-weight:700;color:#666;">ADDRESS</label><input type="text" id="editCustAddr" value="' + escHtml(cust.addresses[0] || '') + '" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:14px;box-sizing:border-box;"></div>' +
+    '<div style="display:flex;gap:8px;"><button onclick="saveCustomerEdit(\'' + escHtml(name.replace(/'/g, "\\'")) + '\')" style="flex:1;background:#cc0000;color:#fff;border:none;padding:10px;border-radius:6px;cursor:pointer;font-size:14px;font-weight:600;">Save</button>' +
+    '<button onclick="document.getElementById(\'custEditOverlay\').remove()" style="flex:1;background:#eee;color:#333;border:none;padding:10px;border-radius:6px;cursor:pointer;font-size:14px;">Cancel</button></div>' +
+    '</div>';
+  document.body.appendChild(overlay);
+}
+
+function saveCustomerEdit(originalName) {
+  const key = originalName.trim().toLowerCase();
+  const overrides = DB.getLocal('customerOverrides', {});
+  overrides[key] = {
+    name: document.getElementById('editCustName').value.trim() || originalName,
+    phone: document.getElementById('editCustPhone').value.trim(),
+    email: document.getElementById('editCustEmail').value.trim(),
+    address: document.getElementById('editCustAddr').value.trim()
+  };
+  DB.set('customerOverrides', overrides);
+  document.getElementById('custEditOverlay').remove();
+  renderCustomers();
+  toast('Customer updated');
 }
 
 // Autocomplete for customer name fields
