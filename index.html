@@ -1727,6 +1727,7 @@ async function onAuthSuccess() {
   document.getElementById('authOverlay').classList.remove('show');
   document.getElementById('logoutBtn').style.display = 'inline-flex';
   initApp();
+  startKeepAlive();
 }
 
 async function handleLogout() {
@@ -4048,6 +4049,18 @@ function selectCustomer(name, formType) {
     document.getElementById('inspCustNameAC').style.display = 'none';
     toast('Customer details filled');
   }
+}
+
+// ========== SUPABASE KEEP-ALIVE ==========
+function startKeepAlive() {
+  if (!sbClient || !currentUser) return;
+  async function ping() {
+    try {
+      await sbClient.from('user_data').select('key').eq('user_id', currentUser.id).limit(1);
+    } catch(e) {}
+  }
+  ping();
+  setInterval(ping, 4 * 60 * 60 * 1000);
 }
 
 // ========== INIT ==========
