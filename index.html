@@ -2688,18 +2688,38 @@ function buildPDF(inv) {
     y += 14;
   }
 
+  // Helper: check if we need a new page (leave room for footer)
+  const bottomMargin = 20;
+  function checkPage(needed) {
+    if (y + needed > pageH - bottomMargin) {
+      doc.addPage();
+      y = 20;
+    }
+  }
+
   // ---- TOTALS ----
   const totW = 82;
   const totX = pageW - 14 - totW;
+
+  const hasDiscount = inv.discount && inv.discount > 0;
+  const showBreakdown = settings.taxEnabled || hasDiscount;
+
+  // Make sure the whole totals block fits on the current page - otherwise
+  // the grand total gets pushed off the bottom and cut off.
+  let totalsBlockH = 2 + 12 + 6; // line above + grand total box + buffer
+  if (showBreakdown) {
+    totalsBlockH += 8; // subtotal row
+    if (hasDiscount) totalsBlockH += 8;
+    if (settings.taxEnabled) totalsBlockH += 8;
+    totalsBlockH += 2;
+  }
+  checkPage(totalsBlockH);
 
   // Thin line above totals
   doc.setDrawColor(...midGray);
   doc.setLineWidth(0.3);
   doc.line(totX, y, pageW - 14, y);
   y += 2;
-
-  const hasDiscount = inv.discount && inv.discount > 0;
-  const showBreakdown = settings.taxEnabled || hasDiscount;
 
   if (showBreakdown) {
     doc.setFontSize(9);
@@ -2747,15 +2767,6 @@ function buildPDF(inv) {
   }
 
   y += 20;
-
-  // Helper: check if we need a new page (leave room for footer)
-  const bottomMargin = 20;
-  function checkPage(needed) {
-    if (y + needed > pageH - bottomMargin) {
-      doc.addPage();
-      y = 20;
-    }
-  }
 
   // ---- PAYMENT INFORMATION ----
   const bankName = settings.bankName || '';
