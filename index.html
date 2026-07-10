@@ -1066,6 +1066,16 @@
         <label>Rego / VIN</label>
         <input type="text" id="custRego" placeholder="ABC-123">
       </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Issue Date</label>
+          <input type="date" id="invIssueDate">
+        </div>
+        <div class="form-group">
+          <label>Due Date</label>
+          <input type="date" id="invDueDate">
+        </div>
+      </div>
     </div>
 
     <div class="card">
@@ -2174,6 +2184,8 @@ function saveInvoice() {
   const discount = getDiscount(sub);
   const afterDiscount = sub - discount;
   const tax = settings.taxEnabled ? afterDiscount * 0.1 : 0;
+  const issueDate = document.getElementById('invIssueDate').value || new Date().toISOString().split('T')[0];
+  const dueDate = document.getElementById('invDueDate').value || '';
 
   if (editingInvoiceIdx >= 0) {
     // Update existing invoice
@@ -2185,6 +2197,8 @@ function saveInvoice() {
       vehicle: document.getElementById('custVehicle').value.trim(),
       rego: document.getElementById('custRego').value.trim(),
     };
+    inv.date = issueDate;
+    inv.dueDate = dueDate;
     inv.items = JSON.parse(JSON.stringify(lineItemData));
     inv.subtotal = sub;
     inv.discountVal = discountVal;
@@ -2205,7 +2219,8 @@ function saveInvoice() {
     const num = isQuote ? (settings.quoNextNum || 1001) : settings.invNextNum;
     const inv = {
       id: prefix + num,
-      date: new Date().toISOString().split('T')[0],
+      date: issueDate,
+      dueDate: dueDate,
       type: documentType,
       status: 'unpaid',
       customer: {
@@ -2248,10 +2263,17 @@ function saveInvoice() {
   document.getElementById('invoiceNotes').value = '';
   document.getElementById('discountVal').value = '0';
   document.getElementById('discountType').value = '%';
+  resetInvoiceDates();
   lineItemData = [];
   renderLineItems();
   updateSaveButton();
   updatePDFButton();
+}
+
+// Default issue date to today, clear due date
+function resetInvoiceDates() {
+  document.getElementById('invIssueDate').value = new Date().toISOString().split('T')[0];
+  document.getElementById('invDueDate').value = '';
 }
 
 // ========== HISTORY ==========
@@ -2337,6 +2359,8 @@ function reloadInvoice(i) {
   document.getElementById('custEmail').value = inv.customer.email;
   document.getElementById('custVehicle').value = inv.customer.vehicle;
   document.getElementById('custRego').value = inv.customer.rego || '';
+  document.getElementById('invIssueDate').value = inv.date || new Date().toISOString().split('T')[0];
+  document.getElementById('invDueDate').value = inv.dueDate || '';
   document.getElementById('invoiceNotes').value = inv.notes || '';
   document.getElementById('discountVal').value = inv.discountVal || 0;
   document.getElementById('discountType').value = inv.discountType || '%';
@@ -2404,22 +2428,23 @@ function generatePDF() {
   const tax = settings.taxEnabled ? afterDiscount * 0.1 : 0;
 
   const isQuote = documentType === 'quote';
-  let invId, invDate, invStatus;
+  const invDate = document.getElementById('invIssueDate').value || new Date().toISOString().split('T')[0];
+  const invDueDate = document.getElementById('invDueDate').value || '';
+  let invId, invStatus;
   if (editingInvoiceIdx >= 0) {
     invId = invoices[editingInvoiceIdx].id;
-    invDate = invoices[editingInvoiceIdx].date;
     invStatus = invoices[editingInvoiceIdx].status || 'unpaid';
   } else {
     const prefix = isQuote ? (settings.quoPrefix || 'QUO-') : settings.invPrefix;
     const num = isQuote ? (settings.quoNextNum || 1001) : settings.invNextNum;
     invId = prefix + num;
-    invDate = new Date().toISOString().split('T')[0];
     invStatus = 'unpaid';
   }
 
   const inv = {
     id: invId,
     date: invDate,
+    dueDate: invDueDate,
     type: documentType,
     status: invStatus,
     customer: {
@@ -2536,7 +2561,7 @@ function buildPDF(inv) {
   doc.text('Due date:', infoX, iy);
   doc.setTextColor(...black);
   doc.setFont(undefined, 'bold');
-  doc.text(inv.date, valX, iy, { align: 'right' });
+  doc.text(inv.dueDate || '—', valX, iy, { align: 'right' });
 
   y = Math.max(y, iy) + 6;
 
@@ -4074,6 +4099,7 @@ function initApp() {
   loadSettings();
   renderLineItems();
   updateTotals();
+  resetInvoiceDates();
   // Check for due service notifications on load
   setTimeout(scheduleNotifications, 2000);
 }
