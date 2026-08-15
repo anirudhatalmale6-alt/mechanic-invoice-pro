@@ -769,8 +769,44 @@
     .insp-specs-grid .form-group { margin-bottom: 0; }
     .insp-specs-grid .form-group input { padding: 8px 10px; font-size: 13px; }
     .insp-specs-grid .form-group label { font-size: 11px; margin-bottom: 3px; }
+    .insp-brake-row td {
+      padding: 10px 8px 12px !important;
+      background: #fcfcfc;
+    }
+    .insp-brake-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .insp-brake-title {
+      font-weight: 700;
+      font-size: 13px;
+      color: var(--text);
+    }
+    .insp-brake-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .insp-brake-status label {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: var(--text-light);
+    }
+    .insp-brake-scroll {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      margin-top: 2px;
+    }
     .insp-brake-table {
       width: 100%;
+      min-width: 520px;
       border-collapse: collapse;
       font-size: 12px;
       margin-top: 8px;
@@ -804,6 +840,21 @@
       text-align: center;
     }
     .insp-brake-table input:focus { outline: none; border-color: var(--red); }
+    .insp-brake-hint {
+      display: none;
+      font-size: 10px;
+      color: var(--text-light);
+      margin-top: 4px;
+      font-style: italic;
+    }
+    @media (max-width: 600px) {
+      .insp-brake-hint { display: block; }
+      .insp-brake-table { min-width: 460px; font-size: 11px; }
+      .insp-brake-table th { font-size: 9px; padding: 5px 2px; }
+      .insp-brake-table td { padding: 3px 2px; }
+      .insp-brake-table td:first-child { padding: 3px 5px; font-size: 10px; }
+      .insp-brake-table input { padding: 3px 2px; font-size: 11px; }
+    }
     .insp-tyre-grid {
       display: grid;
       grid-template-columns: repeat(5, 1fr);
@@ -3339,13 +3390,23 @@ function renderInspections() {
     html += '<div class="insp-section-header">' + section.title + '</div>';
     html += '<table class="insp-table"><thead><tr><th>Item</th><th class="insp-col-ok">OK</th><th class="insp-col-ra">R/A</th></tr></thead><tbody>';
     section.items.forEach(item => {
-      html += '<tr><td><div>' + item.label + '</div>' + renderInspExtra(item) + '</td>';
       if (item.extra === 'brake-table') {
-        html += '<td colspan="2" style="padding:0;">' + renderBrakeTable(item.id) + '</td>';
-      } else {
-        html += '<td class="insp-radio-cell"><input type="radio" class="insp-radio" name="insp_' + item.id + '" value="ok"></td>';
-        html += '<td class="insp-radio-cell"><input type="radio" class="insp-radio ra" name="insp_' + item.id + '" value="ra"></td>';
+        // Full-width row: the measurement grid needs the whole table width,
+        // it gets clipped if squeezed into the narrow OK / R/A columns.
+        html += '<tr class="insp-brake-row"><td colspan="3">';
+        html += '<div class="insp-brake-head"><span class="insp-brake-title">' + item.label + '</span>';
+        html += '<span class="insp-brake-status">';
+        html += '<label>OK <input type="radio" class="insp-radio" name="insp_' + item.id + '" value="ok"></label>';
+        html += '<label>R/A <input type="radio" class="insp-radio ra" name="insp_' + item.id + '" value="ra"></label>';
+        html += '</span></div>';
+        html += '<div class="insp-brake-scroll">' + renderBrakeTable(item.id) + '</div>';
+        html += '<div class="insp-brake-hint">Swipe sideways to see all columns</div>';
+        html += '</td></tr>';
+        return;
       }
+      html += '<tr><td><div>' + item.label + '</div>' + renderInspExtra(item) + '</td>';
+      html += '<td class="insp-radio-cell"><input type="radio" class="insp-radio" name="insp_' + item.id + '" value="ok"></td>';
+      html += '<td class="insp-radio-cell"><input type="radio" class="insp-radio ra" name="insp_' + item.id + '" value="ra"></td>';
       html += '</tr>';
     });
     html += '</tbody></table>';
