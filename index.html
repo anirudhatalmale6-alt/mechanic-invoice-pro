@@ -4192,9 +4192,24 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 });
 
-// Register service worker
+// Register service worker.
+// Reload once when a new version takes over so updates land without a manual cache clear.
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js').catch(() => {});
+  let swReloaded = false;
+  const hadController = !!navigator.serviceWorker.controller;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    // Only on an upgrade - not on the very first install, which has no old page to replace.
+    if (swReloaded || !hadController) return;
+    swReloaded = true;
+    location.reload();
+  });
+  navigator.serviceWorker.register('sw.js').then(reg => {
+    reg.update().catch(() => {});
+    // Re-check for a new build when the app is brought back to the foreground.
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) reg.update().catch(() => {});
+    });
+  }).catch(() => {});
 }
 </script>
 </body>
