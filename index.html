@@ -1185,6 +1185,10 @@
     </div>
     <div style="height: 8px"></div>
     <div class="actions-bar">
+      <button class="btn btn-block" id="combinedPdfBtn" style="background:#333;color:#fff;border:none;padding:12px;border-radius:8px;font-size:15px;cursor:pointer" onclick="openCombinedPicker()">&#128203; Invoice + Inspection in one PDF</button>
+    </div>
+    <div style="height: 8px"></div>
+    <div class="actions-bar">
       <button class="btn btn-success btn-block" id="saveBtn" onclick="saveInvoice()">&#128190; Save New Invoice</button>
     </div>
   </div>
@@ -1607,6 +1611,19 @@
       <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
     </div>
     <input type="hidden" id="editServiceIdx">
+  </div>
+</div>
+
+<div class="modal-overlay" id="combinedModal">
+  <div class="modal">
+    <div class="modal-title">Attach an inspection report</div>
+    <div style="font-size:13px;color:#666;margin-bottom:10px;">
+      Pick the inspection to include after the invoice. Both end up in a single PDF.
+    </div>
+    <div id="combinedList" style="max-height:320px;overflow-y:auto;margin-bottom:12px;"></div>
+    <div class="actions-bar">
+      <button class="btn btn-outline" onclick="closeCombinedPicker()">Cancel</button>
+    </div>
   </div>
 </div>
 
@@ -2467,9 +2484,16 @@ function regeneratePDF(i) {
 
 // ========== PDF GENERATION ==========
 function generatePDF() {
+  const inv = buildInvoiceFromForm();
+  if (!inv) return;
+  buildPDF(inv);
+}
+
+// Builds the invoice object from the form. Returns null (and toasts) if incomplete.
+function buildInvoiceFromForm() {
   const custName = document.getElementById('custName').value.trim();
-  if (!custName) { toast('Enter customer name'); return; }
-  if (lineItemData.length === 0) { toast('Add at least one item'); return; }
+  if (!custName) { toast('Enter customer name'); return null; }
+  if (lineItemData.length === 0) { toast('Add at least one item'); return null; }
 
   const sub = lineItemData.reduce((s, it) => s + it.qty * it.rate, 0);
   const discountVal = parseFloat(document.getElementById('discountVal').value) || 0;
@@ -2515,12 +2539,15 @@ function generatePDF() {
     notes: document.getElementById('invoiceNotes').value.trim()
   };
 
-  buildPDF(inv);
+  return inv;
 }
 
-function buildPDF(inv) {
+// opts.doc     - render into an existing jsPDF document instead of a new one
+// opts.noSave  - skip the download (caller saves the combined document)
+function buildPDF(inv, opts) {
+  opts = opts || {};
   const { jsPDF } = window.jspdf;
-  const doc = new jsPDF();
+  const doc = opts.doc || new jsPDF();
   const sym = settings.currSymbol;
   const pageW = doc.internal.pageSize.width;
   const pageH = doc.internal.pageSize.height;
@@ -2911,10 +2938,13 @@ function buildPDF(inv) {
   doc.setTextColor(180, 180, 180);
   doc.text('Thank you for choosing ' + (settings.bizName || 'Macs Autos'), pageW / 2, lastPageH - 8, { align: 'center' });
 
+  if (opts.noSave) return doc;
+
   // Save
   const filename = inv.id.replace(/[^a-zA-Z0-9-]/g, '') + '_' + inv.customer.name.replace(/\s+/g, '_') + '.pdf';
   doc.save(filename);
   toast('PDF downloaded: ' + filename);
+  return doc;
 }
 
 // ========== SERVICE TRACKER ==========
@@ -3681,9 +3711,15 @@ function renderInspectionHistory() {
   list.innerHTML = html;
 }
 
-function buildInspectionPDF(data) {
+// opts.doc     - render into an existing jsPDF document instead of a new one
+// opts.noSave  - skip the download (caller saves the combined document)
+function buildInspectionPDF(data, opts) {
+  opts = opts || {};
   const { jsPDF } = window.jspdf;
-  const doc = new jsPDF();
+  const doc = opts.doc || new jsPDF();
+  // Where this report starts, so the footer only stamps the inspection pages
+  // and not any invoice pages sitting in front of it.
+  const startPage = doc.internal.getNumberOfPages();
   const pageW = doc.internal.pageSize.width;
   const pageH = doc.internal.pageSize.height;
   const red = [204, 0, 0];
@@ -3888,14 +3924,19 @@ function buildInspectionPDF(data) {
     y += noteLines.length * 4 + 6;
   }
 
-  // ---- FOOTER on each page ----
+  // ---- FOOTER on each page of this report ----
   const pageCount = doc.internal.getNumberOfPages();
-  for (let p = 1; p <= pageCount; p++) {
+  const inspTotal = pageCount - startPage + 1;
+  for (let p = startPage; p <= pageCount; p++) {
     doc.setPage(p);
     doc.setFontSize(7); doc.setFont(undefined, 'normal'); doc.setTextColor(...midGray);
     doc.text((settings.bizName || 'Macs Autos') + ' - Vehicle Inspection Report', margin, pageH - 8);
-    doc.text('Page ' + p + ' of ' + pageCount, pageW - margin, pageH - 8, { align: 'right' });
+    const pageLabel = (opts.doc ? 'Inspection page ' : 'Page ') + (p - startPage + 1) + ' of ' + inspTotal;
+    doc.text(pageLabel, pageW - margin, pageH - 8, { align: 'right' });
   }
+  doc.setPage(pageCount);
+
+  if (opts.noSave) return doc;
 
   // Generate filename
   const custName = (data.customer.name || 'inspection').replace(/[^a-zA-Z0-9]/g, '_');
@@ -3903,12 +3944,105 @@ function buildInspectionPDF(data) {
   const fname = 'Inspection_' + custName + (rego ? '_' + rego : '') + '.pdf';
   doc.save(fname);
   toast('Inspection PDF downloaded');
+  return doc;
 }
 
 function generateInspectionPDF(idx) {
   const data = typeof idx === 'number' ? inspections[idx] : collectInspectionData();
   if (!data.customer.name && !data.vehicle.rego) { toast('Enter customer name or rego first'); return; }
   buildInspectionPDF(data);
+}
+
+// ========== COMBINED INVOICE + INSPECTION PDF ==========
+function escapeHtml(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  })[c]);
+}
+
+function inspectionHasContent(d) {
+  if (!d) return false;
+  if (d.customer && d.customer.name) return true;
+  if (d.vehicle && d.vehicle.rego) return true;
+  return false;
+}
+
+function inspectionLabel(d) {
+  const who = (d.customer && d.customer.name) || 'No name';
+  const rego = (d.vehicle && d.vehicle.rego) ? ' - ' + d.vehicle.rego : '';
+  const car = [d.vehicle && d.vehicle.make, d.vehicle && d.vehicle.model].filter(Boolean).join(' ');
+  return { title: who + rego, sub: [car, d.dateTime || ''].filter(Boolean).join('  |  ') };
+}
+
+function openCombinedPicker() {
+  const inv = buildInvoiceFromForm();
+  if (!inv) return;
+
+  const list = document.getElementById('combinedList');
+  const rego = (inv.customer.rego || '').trim().toLowerCase();
+  const name = (inv.customer.name || '').trim().toLowerCase();
+
+  // Score saved inspections so the one for this job floats to the top
+  const entries = (inspections || []).map((d, i) => {
+    const r = ((d.vehicle && d.vehicle.rego) || '').trim().toLowerCase();
+    const n = ((d.customer && d.customer.name) || '').trim().toLowerCase();
+    let score = 0;
+    if (rego && r && r === rego) score += 2;
+    if (name && n && n === name) score += 1;
+    return { d: d, i: i, score: score };
+  }).sort((a, b) => b.score - a.score);
+
+  let html = '';
+  const current = collectInspectionData();
+  if (inspectionHasContent(current)) {
+    const l = inspectionLabel(current);
+    html += combinedRow("'form'", 'Inspection currently open in the form', l.title + (l.sub ? ' - ' + l.sub : ''), false);
+  }
+  entries.forEach(e => {
+    const l = inspectionLabel(e.d);
+    html += combinedRow(e.i, l.title, l.sub, e.score > 0);
+  });
+
+  if (!html) {
+    html = '<div style="padding:16px;text-align:center;color:#888;font-size:13px;">'
+         + 'No inspections saved yet. Fill in the Inspections tab first, then come back here.</div>';
+  }
+  list.innerHTML = html;
+  document.getElementById('combinedModal').classList.add('show');
+}
+
+function combinedRow(arg, title, sub, isMatch) {
+  return '<div onclick="generateCombinedPDF(' + arg + ')" style="cursor:pointer;padding:10px 12px;border:1px solid ' +
+    (isMatch ? '#cc0000' : '#e0e0e0') + ';border-radius:8px;margin-bottom:8px;background:' +
+    (isMatch ? '#fff5f5' : '#fff') + ';">' +
+    '<div style="font-weight:600;font-size:14px;">' + escapeHtml(title) +
+    (isMatch ? ' <span style="color:#cc0000;font-size:11px;font-weight:700;">MATCHES THIS JOB</span>' : '') + '</div>' +
+    (sub ? '<div style="font-size:12px;color:#777;margin-top:2px;">' + escapeHtml(sub) + '</div>' : '') +
+    '</div>';
+}
+
+function closeCombinedPicker() {
+  document.getElementById('combinedModal').classList.remove('show');
+}
+
+function generateCombinedPDF(which) {
+  const inv = buildInvoiceFromForm();
+  if (!inv) return;
+
+  const data = which === 'form' ? collectInspectionData() : inspections[which];
+  if (!inspectionHasContent(data)) { toast('That inspection has no details'); return; }
+
+  closeCombinedPicker();
+
+  // Invoice first, then the inspection report appended on a fresh page.
+  const doc = buildPDF(inv, { noSave: true });
+  doc.addPage();
+  buildInspectionPDF(data, { doc: doc, noSave: true });
+
+  const base = inv.id.replace(/[^a-zA-Z0-9-]/g, '') + '_' + inv.customer.name.replace(/\s+/g, '_');
+  const fname = base + '_with_Inspection.pdf';
+  doc.save(fname);
+  toast('Combined PDF downloaded');
 }
 
 function clearInspectionForm() {
